@@ -624,7 +624,7 @@ async function setLocale(newLocale){
 }
 async function fetchTranslationsFor(newLocale){
   try{
-    const response = await fetch(`/reservation/lang/${newLocale}.json`);
+    const response = await fetch(`/lang/${newLocale}.json`);
     if(!response.ok) throw new Error('not found');
     return await response.json();
   } catch(e){
@@ -1001,6 +1001,10 @@ function prevStep(){
    MAIN RENDER DISPATCH
    --------------------------------------------------------------------- */
 let lastRenderedStep = -1;
+let isRendering = false; // re-entrancy guard — if anything ever triggers render() again
+                          // while one is already in progress (e.g. a focus() call bouncing
+                          // back into another event), this makes it a safe no-op instead of
+                          // a runaway loop that freezes the tab.
 function captureFocusSelector(){
   const el = document.activeElement;
   if(!el || el === document.body || !el.tagName) return null;
@@ -1020,26 +1024,32 @@ function restoreFocusSelector(selector){
   if(!selector) return;
   try{
     const el = document.querySelector(selector);
-    if(el && typeof el.focus === 'function') el.focus({ preventScroll: true });
+    if(el && el !== document.activeElement && typeof el.focus === 'function') el.focus({ preventScroll: true });
   } catch(e){ /* ignore invalid selector */ }
 }
 function render(){
-  const focusSelector = captureFocusSelector();
-  renderTideTracker();
-  const app = document.getElementById('app');
-  const renderers = [renderExperiencesStep, renderDatesStep, renderPeopleStep, renderReviewStep, renderDoneStep];
-  app.innerHTML = renderers[state.step]();
-  if(state.step !== lastRenderedStep){
-    const panel = app.querySelector('.step-panel');
-    if(panel) panel.classList.add('is-step-transition');
-    lastRenderedStep = state.step;
+  if(isRendering) return;
+  isRendering = true;
+  try{
+    const focusSelector = captureFocusSelector();
+    renderTideTracker();
+    const app = document.getElementById('app');
+    const renderers = [renderExperiencesStep, renderDatesStep, renderPeopleStep, renderReviewStep, renderDoneStep];
+    app.innerHTML = renderers[state.step]();
+    if(state.step !== lastRenderedStep){
+      const panel = app.querySelector('.step-panel');
+      if(panel) panel.classList.add('is-step-transition');
+      lastRenderedStep = state.step;
+    }
+    attachStepHandlers();
+    renderSelectionBar();
+    requestAnimationFrame(syncBarPadding);
+    restoreFocusSelector(focusSelector);
+    applyTranslations();
+    saveDraft();
+  } finally {
+    isRendering = false;
   }
-  attachStepHandlers();
-  renderSelectionBar();
-  requestAnimationFrame(syncBarPadding);
-  restoreFocusSelector(focusSelector);
-  applyTranslations();
-  saveDraft();
 }
 
 function syncBarPadding(){
@@ -1073,6 +1083,20 @@ function activityDisplayName(a, lang){
   if(dn && typeof dn === 'object') return dn[l] || dn.en || a.name || '';
   return dn || a.name || ''; // legacy: displayName was a plain string, same for every language
 }
+function localizedField(a, field, lang){
+  if(!a) return '';
+  const val = a[field];
+  const l = lang || (typeof state!=='undefined' ? state.pageLanguage : 'en') || 'en';
+  if(val && typeof val === 'object' && !Array.isArray(val)) return val[l] || val.en || '';
+  return val || ''; // legacy: plain string, same for every language
+}
+function localizedListField(a, field, lang){
+  if(!a) return [];
+  const val = a[field];
+  const l = lang || (typeof state!=='undefined' ? state.pageLanguage : 'en') || 'en';
+  if(val && typeof val === 'object' && !Array.isArray(val)) return val[l] || val.en || [];
+  return Array.isArray(val) ? val : []; // legacy: plain array, same for every language
+}
 function priceAfterDiscount(a){
   if(!a.discount) return a.price;
   if(a.discount.type==='percent') return Math.round(a.price * (1 - a.discount.value/100));
@@ -1095,9 +1119,9 @@ function renderExperiencesStep(){
       </div>
       <div class="activity-body">
         <div class="activity-name" tr="${escapeAttr(activityDisplayName(a))}">${activityDisplayName(a)}</div>
-        <div class="activity-desc" tr="${escapeAttr(a.shortDesc)}">${a.shortDesc}</div>
+        <div class="activity-desc" tr="${escapeAttr(localizedField(a,'shortDesc'))}">${localizedField(a,'shortDesc')}</div>
         <div class="activity-meta">
-          <span tr="${escapeAttr(a.durationLabel)}">⏱ ${a.durationLabel}</span>
+          <span tr="${escapeAttr(localizedField(a,'durationLabel'))}">⏱ ${localizedField(a,'durationLabel')}</span>
           ${a.meetupTime ? `<span tr="${escapeAttr(meetupLine(a))}">🕒 ${meetupLine(a)}</span>` : ''}
         </div>
         <div class="activity-links">
@@ -1141,13 +1165,13 @@ function showMoreInfoModal(activityId){
       </div>
       <button class="icon-btn" onclick="closeModal()" tr="✕">✕</button>
     </div>
-    <p style="font-size:14px; color:var(--ink-soft); line-height:1.6;" tr="${escapeAttr(a.longDesc||a.shortDesc)}">${a.longDesc||a.shortDesc}</p>
-    <div class="tour-hours" tr="${escapeAttr(a.hours||a.durationLabel)}">🕒 ${a.hours||a.durationLabel}</div>
+    <p style="font-size:14px; color:var(--ink-soft); line-height:1.6;" tr="${escapeAttr(localizedField(a,'longDesc')||localizedField(a,'shortDesc'))}">${localizedField(a,'longDesc')||localizedField(a,'shortDesc')}</p>
+    <div class="tour-hours" tr="${escapeAttr(localizedField(a,'hours')||localizedField(a,'durationLabel'))}">🕒 ${localizedField(a,'hours')||localizedField(a,'durationLabel')}</div>
     ${a.meetupTime ? `<div class="tour-hours" tr="${escapeAttr(meetupLine(a))}">📍 ${meetupLine(a)}</div>` : ''}
-    ${a.highlights && a.highlights.length ? `<div class="info-block-title" tr="Highlights">Highlights</div><ul class="info-list">${list(a.highlights)}</ul>` : ''}
-    ${a.included && a.included.length ? `<div class="info-block-title" tr="What's included">What's included</div><ul class="info-list">${list(a.included)}</ul>` : ''}
-    ${a.bring && a.bring.length ? `<div class="info-block-title" tr="What to bring">What to bring</div><ul class="info-list">${list(a.bring)}</ul>` : ''}
-    ${a.meetingPoint ? `<div class="info-block-title" tr="Meeting point">Meeting point</div><p style="font-size:13.5px; color:var(--ink-soft);" tr="${escapeAttr(a.meetingPoint)}">${a.meetingPoint}</p>` : ''}
+    ${localizedListField(a,'highlights').length ? `<div class="info-block-title" tr="Highlights">Highlights</div><ul class="info-list">${list(localizedListField(a,'highlights'))}</ul>` : ''}
+    ${localizedListField(a,'included').length ? `<div class="info-block-title" tr="What's included">What's included</div><ul class="info-list">${list(localizedListField(a,'included'))}</ul>` : ''}
+    ${localizedListField(a,'bring').length ? `<div class="info-block-title" tr="What to bring">What to bring</div><ul class="info-list">${list(localizedListField(a,'bring'))}</ul>` : ''}
+    ${localizedField(a,'meetingPoint') ? `<div class="info-block-title" tr="Meeting point">Meeting point</div><p style="font-size:13.5px; color:var(--ink-soft);" tr="${escapeAttr(localizedField(a,'meetingPoint'))}">${localizedField(a,'meetingPoint')}</p>` : ''}
     <div style="margin-top:20px; display:flex; gap:10px;">
       <button class="btn btn-primary btn-sm" data-select-activity="${a.id}" onclick="closeModal()" tr="Select this experience">Select this experience</button>
       <a class="btn btn-outline btn-sm" href="experience-detail-template.html?activity=${encodeURIComponent(a.id)}" target="_blank" rel="noopener" tr="Open full page ↗">Open full page ↗</a>
@@ -1421,7 +1445,7 @@ function renderDatesStep(){
           <span class="ico">${a.icon}</span>
           <div>
             <h3 tr="${escapeAttr(activityDisplayName(a))}">${activityDisplayName(a)}</h3>
-            ${a.hours ? `<div class="tour-hours" tr="${escapeAttr(a.hours)}">🕒 ${a.hours}</div>` : `<div style="font-size:12.5px; color:var(--ink-soft);" tr="${escapeAttr(a.durationLabel)}">${a.durationLabel}</div>`}
+            ${localizedField(a,'hours') ? `<div class="tour-hours" tr="${escapeAttr(localizedField(a,'hours'))}">🕒 ${localizedField(a,'hours')}</div>` : `<div style="font-size:12.5px; color:var(--ink-soft);" tr="${escapeAttr(localizedField(a,'durationLabel'))}">${localizedField(a,'durationLabel')}</div>`}
             ${a.meetupTime ? `<div class="tour-hours" tr="${escapeAttr(meetupLine(a))}">📍 ${meetupLine(a)}</div>` : ''}
           </div>
         </div>
@@ -1511,19 +1535,27 @@ function deletePerson(personId){
 function togglePersonCollapsed(personId){ state.collapsed[personId] = !state.collapsed[personId]; render(); }
 
 /* ---- Returning-client lookup ------------------------------------- */
+const _clientHistoryChecksInFlight = new Set();
 async function checkClientHistory(personId, email){
   if(!email || !email.includes('@')) return;
-  const db = await storeGet(SK.clients, true) || {};
-  const rec = db[email.toLowerCase()];
-  const p = state.people.find(x=>x.id===personId);
-  if(!p) return;
-  if(rec && rec.history && rec.history.length){
-    const latest = rec.history[rec.history.length-1];
-    p._welcomeBack = { date: latest.date };
-  } else {
-    p._welcomeBack = null;
+  const flightKey = personId + '|' + email.toLowerCase();
+  if(_clientHistoryChecksInFlight.has(flightKey)) return; // already checking this exact email — skip
+  _clientHistoryChecksInFlight.add(flightKey);
+  try{
+    const db = await storeGet(SK.clients, true) || {};
+    const rec = db[email.toLowerCase()];
+    const p = state.people.find(x=>x.id===personId);
+    if(!p) return;
+    if(rec && rec.history && rec.history.length){
+      const latest = rec.history[rec.history.length-1];
+      p._welcomeBack = { date: latest.date };
+    } else {
+      p._welcomeBack = null;
+    }
+    render();
+  } finally {
+    _clientHistoryChecksInFlight.delete(flightKey);
   }
-  render();
 }
 function applySavedDetails(personId){
   storeGet(SK.clients, true).then(db=>{

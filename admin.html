@@ -708,6 +708,23 @@ function activityDisplayName(a, lang){
   if(dn && typeof dn === 'object') return dn[l] || dn.en || a.name || 'Unknown experience';
   return dn || a.name || 'Unknown experience';
 }
+const CONTENT_LANGS = [['en','English'],['es','Español'],['fr','Français'],['jp','日本語'],['pt','Português']];
+function asLangObject(val, isList){
+  if(val && typeof val === 'object' && !Array.isArray(val)) return val;
+  return { en: val || (isList ? [] : '') }; // legacy plain value — treat as the English entry
+}
+function localizedFieldAdmin(a, field, lang){
+  if(!a) return '';
+  const l = lang || 'en';
+  const obj = asLangObject(a[field]);
+  return obj[l] || obj.en || '';
+}
+function localizedListFieldAdmin(a, field, lang){
+  if(!a) return [];
+  const l = lang || 'en';
+  const obj = asLangObject(a[field], true);
+  return obj[l] || obj.en || [];
+}
 function computeSuggestedDeposit(total){ return Math.round(Math.min((total||0) * 0.15, 4000)); }
 function bookingCollected(b){
   return (b.payments||[]).reduce((s,p)=>{
@@ -1537,6 +1554,35 @@ function openActivityEditor(activityId){
 }
 
 function buildActivityFormHtml(a, isNew){
+  const dn = asLangObject(a.displayName);
+  const sd = asLangObject(a.shortDesc);
+  const ld = asLangObject(a.longDesc);
+  const dl = asLangObject(a.durationLabel);
+  const hr = asLangObject(a.hours);
+  const mp = asLangObject(a.meetingPoint);
+  const hl = asLangObject(a.highlights, true);
+  const inc = asLangObject(a.included, true);
+  const br = asLangObject(a.bring, true);
+
+  const tabBar = `<div style="display:flex; gap:6px; margin-bottom:14px; flex-wrap:wrap;" data-lang-tab-bar>
+    ${CONTENT_LANGS.map(([code,label],i)=>`<button type="button" class="btn btn-sm ${i===0?'btn-primary':'btn-outline'}" data-content-lang-tab="${code}">${label}</button>`).join('')}
+  </div>`;
+
+  const panels = CONTENT_LANGS.map(([code],i)=>`
+    <div data-content-lang-panel="${code}" class="content-lang-panel ${i===0?'':'hidden'}">
+      <div class="field-grid">
+        <div class="field" style="grid-column:1/-1;"><label>Display name${code==='en'?' (default)':' — blank falls back to English'}</label><input type="text" id="af_displayname_${code}" value="${escapeAttr(dn[code]||'')}" placeholder="${code==='en'?'e.g. Whale Shark Snorkel':''}"></div>
+        <div class="field"><label>Duration label</label><input type="text" id="af_duration_${code}" value="${escapeAttr(dl[code]||'')}" placeholder="4 hrs · morning"></div>
+        <div class="field"><label>Hours</label><input type="text" id="af_hours_${code}" value="${escapeAttr(hr[code]||'')}" placeholder="Departs 8:00 AM · Returns 12:00 PM"></div>
+        <div class="field" style="grid-column:1/-1;"><label>Short description (shown on the card)</label><textarea id="af_shortdesc_${code}">${escapeHtml(sd[code]||'')}</textarea></div>
+        <div class="field" style="grid-column:1/-1;"><label>Long description (shown in "More information")</label><textarea id="af_longdesc_${code}">${escapeHtml(ld[code]||'')}</textarea></div>
+        <div class="field"><label>Highlights (one per line)</label><textarea id="af_highlights_${code}">${(hl[code]||[]).join('\n')}</textarea></div>
+        <div class="field"><label>What's included (one per line)</label><textarea id="af_included_${code}">${(inc[code]||[]).join('\n')}</textarea></div>
+        <div class="field"><label>What to bring (one per line)</label><textarea id="af_bring_${code}">${(br[code]||[]).join('\n')}</textarea></div>
+        <div class="field"><label>Meeting point</label><textarea id="af_meeting_${code}">${escapeHtml(mp[code]||'')}</textarea></div>
+      </div>
+    </div>`).join('');
+
   return `
   <h3 style="padding-right:30px;">${isNew?'Add new activity':'Edit activity'}</h3>
   <div class="field-grid" style="margin-top:18px;">
@@ -1553,8 +1599,6 @@ function buildActivityFormHtml(a, isNew){
     <div class="field"><label>Icon (emoji)</label><input type="text" id="af_icon" value="${escapeAttr(a.icon)}" maxlength="4"></div>
     <div class="field"><label>Image URL (optional — leave blank to use a color gradient)</label><input type="text" id="af_image" value="${escapeAttr(a.image||'')}" placeholder="https://…"></div>
     <div class="field"><label>Price per person (MX$)</label><input type="number" min="0" id="af_price" value="${a.price}"></div>
-    <div class="field"><label>Duration label</label><input type="text" id="af_duration" value="${escapeAttr(a.durationLabel||'')}" placeholder="4 hrs · morning"></div>
-    <div class="field"><label>Hours</label><input type="text" id="af_hours" value="${escapeAttr(a.hours||'')}" placeholder="Departs 8:00 AM · Returns 12:00 PM"></div>
     <div class="field"><label>Meetup time</label><input type="time" id="af_meetuptime" value="${escapeAttr(a.meetupTime||'')}"></div>
     <div class="field"><label>Discount type</label>
       <select id="af_discount_type">
@@ -1581,25 +1625,10 @@ function buildActivityFormHtml(a, isNew){
     <div class="field"><label>Nitrox price per tank (MX$)</label><input type="number" min="0" id="af_nitrox_price" value="${a.nitroxPricePerTank||200}"></div>
     <div class="field"><label>Tanks per day</label><input type="number" min="1" id="af_tanks_per_day" value="${a.tanksPerDay||1}"></div>
   </div>
-  <div class="section-title" style="margin-top:18px;">Display name shown to customers, by language</div>
-  <p style="color:var(--ink-soft); font-size:12.5px; margin-bottom:10px;">Leave a language blank to fall back to English. The customer site shows whichever one matches the language they've selected.</p>
-  <div class="field-grid">
-    ${(()=>{
-      const dn = (a.displayName && typeof a.displayName === 'object') ? a.displayName : { en: a.displayName || a.name || '' };
-      const langs = [['en','English'],['es','Español'],['fr','Français'],['jp','日本語'],['pt','Português']];
-      return langs.map(([code,label])=>`
-        <div class="field" style="margin-bottom:0;"><label>${label}${code==='en'?' (default)':''}</label><input type="text" id="af_displayname_${code}" value="${escapeAttr(dn[code]||'')}" placeholder="${code==='en'?'e.g. Whale Shark Snorkel':''}"></div>
-      `).join('');
-    })()}
-  </div>
-  <div class="field-grid" style="margin-top:14px;">
-    <div class="field" style="grid-column:1/-1;"><label>Short description (shown on the card)</label><textarea id="af_shortdesc">${escapeHtml(a.shortDesc||'')}</textarea></div>
-    <div class="field" style="grid-column:1/-1;"><label>Long description (shown in "More information")</label><textarea id="af_longdesc">${escapeHtml(a.longDesc||'')}</textarea></div>
-    <div class="field"><label>Highlights (one per line)</label><textarea id="af_highlights">${(a.highlights||[]).join('\n')}</textarea></div>
-    <div class="field"><label>What's included (one per line)</label><textarea id="af_included">${(a.included||[]).join('\n')}</textarea></div>
-    <div class="field"><label>What to bring (one per line)</label><textarea id="af_bring">${(a.bring||[]).join('\n')}</textarea></div>
-    <div class="field"><label>Meeting point</label><textarea id="af_meeting">${escapeHtml(a.meetingPoint||'')}</textarea></div>
-  </div>
+  <div class="section-title" style="margin-top:18px;">Content by language</div>
+  <p style="color:var(--ink-soft); font-size:12.5px; margin-bottom:10px;">Fill in English at minimum — the other languages fall back to it automatically for anything left blank.</p>
+  ${tabBar}
+  ${panels}
   <div style="display:flex; gap:10px; margin-top:20px;">
     <button class="btn btn-primary" data-save-activity="${a.id}" data-is-new="${isNew?'1':'0'}">Save activity</button>
     ${!isNew ? `<button class="btn btn-danger" data-delete-activity="${a.id}">Delete activity</button>` : ''}
@@ -1607,41 +1636,45 @@ function buildActivityFormHtml(a, isNew){
 }
 
 async function saveActivityFromForm(activityId, isNew){
-  const get = id => document.getElementById(id).value;
+  const get = id => (document.getElementById(id)||{}).value || '';
   const discountType = get('af_discount_type');
   const discountVal = Number(get('af_discount_value'))||0;
   const mddMinDays = Number(get('af_mdd_mindays'))||0;
   const mddVal = Number(get('af_mdd_value'))||0;
   const existing = activityById(activityId);
+  const byLang = (prefix) => {
+    const o = {};
+    CONTENT_LANGS.forEach(([code])=>{ o[code] = get(`${prefix}_${code}`).trim(); });
+    return o;
+  };
+  const listByLang = (prefix) => {
+    const o = {};
+    CONTENT_LANGS.forEach(([code])=>{ o[code] = get(`${prefix}_${code}`).split('\n').map(s=>s.trim()).filter(Boolean); });
+    return o;
+  };
   const activityData = {
     id: activityId,
     name: get('af_name').trim() || 'Untitled experience',
-    displayName: {
-      en: get('af_displayname_en').trim() || get('af_name').trim() || 'Untitled experience',
-      es: get('af_displayname_es').trim(),
-      fr: get('af_displayname_fr').trim(),
-      jp: get('af_displayname_jp').trim(),
-      pt: get('af_displayname_pt').trim(),
-    },
+    displayName: (()=>{ const d = byLang('af_displayname'); d.en = d.en || get('af_name').trim() || 'Untitled experience'; return d; })(),
     category: get('af_category').trim() || 'General',
     divingType: get('af_divingtype') || null,
     icon: get('af_icon').trim() || '🌊',
     image: get('af_image').trim() || null,
     price: Number(get('af_price'))||0,
-    durationLabel: get('af_duration').trim(),
-    hours: get('af_hours').trim(),
+    durationLabel: byLang('af_duration'),
+    hours: byLang('af_hours'),
     meetupTime: get('af_meetuptime'),
     discount: discountType ? { type: discountType, value: discountVal } : null,
     multiDayDiscount: (mddMinDays >= 2 && mddVal > 0) ? { minDays: mddMinDays, type: get('af_mdd_type'), value: mddVal } : null,
     nitroxAvailable: get('af_nitrox_available') === '1',
     nitroxPricePerTank: Number(get('af_nitrox_price'))||200,
     tanksPerDay: Number(get('af_tanks_per_day'))||1,
-    shortDesc: get('af_shortdesc').trim(),
-    longDesc: get('af_longdesc').trim(),
-    highlights: get('af_highlights').split('\n').map(s=>s.trim()).filter(Boolean),
-    included: get('af_included').split('\n').map(s=>s.trim()).filter(Boolean),
-    bring: get('af_bring').split('\n').map(s=>s.trim()).filter(Boolean),
-    meetingPoint: get('af_meeting').trim(),
+    shortDesc: byLang('af_shortdesc'),
+    longDesc: byLang('af_longdesc'),
+    highlights: listByLang('af_highlights'),
+    included: listByLang('af_included'),
+    bring: listByLang('af_bring'),
+    meetingPoint: byLang('af_meeting'),
     active: existing ? existing.active : true,
   };
   if(isNew){ state.activities.push(activityData); }
@@ -1676,24 +1709,30 @@ async function moveActivity(index, dir){
   await storeSet(SK.activities, state.activities, true);
   renderTab();
 }
-function previewActivity(activityId){
+function previewActivity(activityId, lang){
   const a = activityById(activityId);
   if(!a) return;
+  const l = lang || 'en';
   const mediaStyle = a.image ? `background-image:url('${escapeAttr(a.image)}'); background-size:cover; background-position:center;` : `background:linear-gradient(135deg,var(--deep),var(--teal));`;
   const finalPrice = adminUnitPrice(a);
   const hasDiscount = !!a.discount;
   const list = (arr) => (arr||[]).map(x=>`<li>${escapeHtml(x)}</li>`).join('');
   showModal(`
-    <h3 style="padding-right:30px; margin-bottom:14px;">Preview — how this looks to customers</h3>
+    <div style="display:flex; justify-content:space-between; align-items:center; padding-right:30px; margin-bottom:14px;">
+      <h3>Preview — how this looks to customers</h3>
+      <select data-preview-lang="${a.id}" style="font-size:12.5px; padding:6px 10px; border-radius:8px; border:1px solid var(--line);">
+        ${CONTENT_LANGS.map(([code,label])=>`<option value="${code}" ${code===l?'selected':''}>${label}</option>`).join('')}
+      </select>
+    </div>
     <div style="border-radius:18px; overflow:hidden; box-shadow:var(--shadow-card); max-width:360px;">
       <div style="height:150px; position:relative; display:flex; align-items:flex-end; padding:14px; color:#fff; ${mediaStyle}">
         <span style="position:absolute; top:12px; left:12px; background:rgba(251,250,247,.92); color:var(--deep); font-family:var(--font-mono); font-size:10.5px; text-transform:uppercase; padding:4px 10px; border-radius:999px; font-weight:600;">${escapeHtml(a.category||'')}</span>
         ${!a.image ? `<span style="font-size:38px;">${a.icon}</span>` : ''}
       </div>
       <div style="padding:16px 18px; background:var(--foam);">
-        <div style="font-family:var(--font-display); font-size:18px; color:var(--deep); margin-bottom:6px;">${escapeHtml(activityDisplayName(a))}</div>
-        <div style="font-size:13px; color:var(--ink-soft); margin-bottom:10px;">${escapeHtml(a.shortDesc||'')}</div>
-        <div style="font-size:12px; color:var(--ink-soft); font-family:var(--font-mono);">⏱ ${escapeHtml(a.durationLabel||'')}</div>
+        <div style="font-family:var(--font-display); font-size:18px; color:var(--deep); margin-bottom:6px;">${escapeHtml(activityDisplayName(a, l))}</div>
+        <div style="font-size:13px; color:var(--ink-soft); margin-bottom:10px;">${escapeHtml(localizedFieldAdmin(a,'shortDesc',l))}</div>
+        <div style="font-size:12px; color:var(--ink-soft); font-family:var(--font-mono);">⏱ ${escapeHtml(localizedFieldAdmin(a,'durationLabel',l))}</div>
         <div style="font-family:var(--font-display); font-size:19px; color:var(--deep); margin-top:10px;">
           ${hasDiscount ? `<span style="text-decoration:line-through; font-size:13px; font-family:var(--font-body); color:var(--ink-soft); margin-right:6px;">${fmtMoney(a.price)}</span>` : ''}
           ${fmtMoney(finalPrice)} <small style="font-family:var(--font-body); font-size:12px; font-weight:400;">/ person</small>
@@ -1702,11 +1741,11 @@ function previewActivity(activityId){
     </div>
     <div style="margin-top:18px;">
       <div class="section-title">"More information" content</div>
-      <p style="font-size:13.5px; color:var(--ink-soft); line-height:1.6;">${escapeHtml(a.longDesc||a.shortDesc||'—')}</p>
-      <div style="font-family:var(--font-mono); font-size:12px; color:var(--teal); margin-top:8px;">🕒 ${escapeHtml(a.hours||a.durationLabel||'—')}</div>
-      ${a.highlights&&a.highlights.length ? `<div style="font-size:11px; text-transform:uppercase; color:var(--teal); font-family:var(--font-mono); margin-top:12px;">Highlights</div><ul style="font-size:13px; color:var(--ink-soft); padding-left:18px;">${list(a.highlights)}</ul>` : ''}
-      ${a.included&&a.included.length ? `<div style="font-size:11px; text-transform:uppercase; color:var(--teal); font-family:var(--font-mono); margin-top:12px;">What's included</div><ul style="font-size:13px; color:var(--ink-soft); padding-left:18px;">${list(a.included)}</ul>` : ''}
-      ${a.meetingPoint ? `<div style="font-size:11px; text-transform:uppercase; color:var(--teal); font-family:var(--font-mono); margin-top:12px;">Meeting point</div><p style="font-size:13px; color:var(--ink-soft);">${escapeHtml(a.meetingPoint)}</p>` : ''}
+      <p style="font-size:13.5px; color:var(--ink-soft); line-height:1.6;">${escapeHtml(localizedFieldAdmin(a,'longDesc',l)||localizedFieldAdmin(a,'shortDesc',l)||'—')}</p>
+      <div style="font-family:var(--font-mono); font-size:12px; color:var(--teal); margin-top:8px;">🕒 ${escapeHtml(localizedFieldAdmin(a,'hours',l)||localizedFieldAdmin(a,'durationLabel',l)||'—')}</div>
+      ${localizedListFieldAdmin(a,'highlights',l).length ? `<div style="font-size:11px; text-transform:uppercase; color:var(--teal); font-family:var(--font-mono); margin-top:12px;">Highlights</div><ul style="font-size:13px; color:var(--ink-soft); padding-left:18px;">${list(localizedListFieldAdmin(a,'highlights',l))}</ul>` : ''}
+      ${localizedListFieldAdmin(a,'included',l).length ? `<div style="font-size:11px; text-transform:uppercase; color:var(--teal); font-family:var(--font-mono); margin-top:12px;">What's included</div><ul style="font-size:13px; color:var(--ink-soft); padding-left:18px;">${list(localizedListFieldAdmin(a,'included',l))}</ul>` : ''}
+      ${localizedFieldAdmin(a,'meetingPoint',l) ? `<div style="font-size:11px; text-transform:uppercase; color:var(--teal); font-family:var(--font-mono); margin-top:12px;">Meeting point</div><p style="font-size:13px; color:var(--ink-soft);">${escapeHtml(localizedFieldAdmin(a,'meetingPoint',l))}</p>` : ''}
     </div>
   `);
 }
@@ -2516,6 +2555,21 @@ document.addEventListener('click', (e)=>{
 
   if(t.id === 'addActivityBtn'){ openActivityEditor(null); return; }
   const editAct = t.closest('[data-edit-activity]'); if(editAct){ openActivityEditor(editAct.dataset.editActivity); return; }
+  const langTab = t.closest('[data-content-lang-tab]');
+  if(langTab){
+    const lang = langTab.dataset.contentLangTab;
+    const bar = langTab.closest('[data-lang-tab-bar]');
+    if(bar){
+      bar.querySelectorAll('button').forEach(b=>{
+        b.classList.toggle('btn-primary', b===langTab);
+        b.classList.toggle('btn-outline', b!==langTab);
+      });
+    }
+    document.querySelectorAll('.content-lang-panel').forEach(p=>{
+      p.classList.toggle('hidden', p.dataset.contentLangPanel !== lang);
+    });
+    return;
+  }
   const saveAct = t.closest('[data-save-activity]'); if(saveAct){ saveActivityFromForm(saveAct.dataset.saveActivity, saveAct.dataset.isNew==='1'); return; }
   const delAct = t.closest('[data-delete-activity]'); if(delAct){ if(window.confirm('Delete this activity? This cannot be undone.')) deleteActivityConfirmed(delAct.dataset.deleteActivity); return; }
   const toggleAct = t.closest('[data-toggle-active]'); if(toggleAct){ toggleActivityActive(toggleAct.dataset.toggleActive); return; }
@@ -2577,6 +2631,7 @@ document.addEventListener('click', (e)=>{
 document.addEventListener('change', (e)=>{
   const t = e.target;
   if(t.id === 'bookingsStatusFilter'){ state.bookingsFilter.status = t.value; renderTab(); return; }
+  if(t.matches('[data-preview-lang]')){ previewActivity(t.dataset.previewLang, t.value); return; }
   if(t.id === 'clientsLangFilter'){ state.clientsLangFilter = t.value; renderTab(); return; }
   if(t.matches('[data-change-booking-status]')){ adminSetBookingStatus(t.dataset.changeBookingStatus, t.value); return; }
   if(t.id === 'paymentsActivityFilter'){ state.paymentsFilter.activityId = t.value; renderTab(); return; }
