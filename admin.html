@@ -433,7 +433,6 @@ function showModal(html){
     <button class="modal-close" onclick="closeModal()" aria-label="Close">✕</button>
     ${html}
   </div></div>`;
-  document.getElementById('modalBackdrop').addEventListener('click', e=>{ if(e.target.id==='modalBackdrop') closeModal(); });
 }
 function closeModal(){ document.getElementById('modalHost').innerHTML = ''; }
 
@@ -841,7 +840,7 @@ function equipmentSummaryLineAdmin(p){
     else if(it.size) bits.push(it.size);
     else if(it.knowSize===false && (it.height||it.weight)) bits.push(`H/W: ${it.height}${it.heightUnit||''} / ${it.weight}${it.weightUnit||''}`); // legacy per-item H/W
     if(key==='wetsuit' && it.thickness) bits.push(it.thickness);
-    if(key==='regulator' && it.mode==='own' && it.isDIN) bits.push('DIN');
+    if(key==='regulator' && it.mode==='own' && (it.regType||it.isDIN)) bits.push(it.regType || 'DIN');
     if(it.brand || it.model) bits.push([it.brand,it.model].filter(Boolean).join(' '));
     return `${labels[key]} (${bits.join(' · ')})`;
   }).filter(Boolean);
@@ -1088,7 +1087,7 @@ function buildBookingEditHtml(draft){
       <div style="display:flex; gap:10px; margin-bottom:6px;">
         <label style="display:flex; align-items:center; gap:4px; font-size:11.5px;"><input type="radio" name="draft_mode_${key}_${i}" data-draft-eq-mode="rent" data-eq-item="${key}" data-person-index="${i}" ${it.mode==='rent'?'checked':''}> Rent</label>
         <label style="display:flex; align-items:center; gap:4px; font-size:11.5px;"><input type="radio" name="draft_mode_${key}_${i}" data-draft-eq-mode="own" data-eq-item="${key}" data-person-index="${i}" ${it.mode==='own'?'checked':''}> Own</label>
-        ${key==='regulator' && it.mode==='own' ? `<label style="display:flex; align-items:center; gap:4px; font-size:11.5px;"><input type="checkbox" data-draft-eq-field="isDIN" data-eq-item="regulator" data-person-index="${i}" ${it.isDIN?'checked':''}> DIN</label>` : ''}
+        ${key==='regulator' && it.mode==='own' ? `<select data-draft-eq-field="regType" data-eq-item="regulator" data-person-index="${i}" style="font-size:11.5px; padding:4px 6px;"><option value="">Type…</option><option value="DIN" ${it.regType==='DIN'?'selected':''}>DIN</option><option value="Yoke" ${it.regType==='Yoke'?'selected':''}>Yoke</option></select>` : ''}
       </div>
       ${sizeControl}
       ${key==='wetsuit' ? `<input type="text" placeholder="Thickness e.g. 3mm" data-draft-eq-field="thickness" data-eq-item="wetsuit" data-person-index="${i}" value="${escapeAttr(it.thickness||'')}" style="margin-top:6px; width:100%;">` : ''}
@@ -1223,7 +1222,7 @@ function addDraftPerson(){
       computer:{mode:'',brand:'',model:''},
       fins:{mode:'',knowSize:true,size:'',height:'',heightUnit:'cm',weight:'',weightUnit:'kg',brand:'',model:''},
       mask:{mode:'',brand:'',model:''},
-      regulator:{mode:'',brand:'',model:'',isDIN:false},
+      regulator:{mode:'',brand:'',model:'',regType:''},
       wetsuit:{mode:'',knowSize:true,size:'',height:'',heightUnit:'cm',weight:'',weightUnit:'kg',brand:'',model:'',thickness:''}
     }
   });
@@ -2214,7 +2213,7 @@ function reservationEquipItemFormHtml(p, def, profileOwn){
     <div style="display:flex; gap:14px; margin-bottom:6px;">
       <label style="display:flex; gap:4px; font-size:12px; align-items:center;"><input type="radio" name="${idp}_mode" value="rent" ${mode==='rent'?'checked':''}> Rent</label>
       <label style="display:flex; gap:4px; font-size:12px; align-items:center;"><input type="radio" name="${idp}_mode" value="own" ${mode==='own'?'checked':''}> Own</label>
-      ${isRegulator ? `<label style="display:flex; gap:4px; font-size:12px; align-items:center;"><input type="checkbox" id="${idp}_din" ${it.isDIN?'checked':''}> DIN</label>` : ''}
+      ${isRegulator ? `<select id="${idp}_regtype" style="font-size:12px; padding:4px 6px;"><option value="">Type…</option><option value="DIN" ${(it.regType||(it.isDIN?'DIN':''))==='DIN'?'selected':''}>DIN</option><option value="Yoke" ${it.regType==='Yoke'?'selected':''}>Yoke</option></select>` : ''}
     </div>
     ${sizeSelectHtml}
     ${hasThickness ? `<input type="text" id="${idp}_thickness" placeholder="Thickness e.g. 3mm" value="${escapeAttr(it.thickness||'')}" style="margin-top:6px; width:100%;">` : ''}
@@ -2285,8 +2284,8 @@ async function saveReservationEquip(bookingId, personIndex){
       if(thickEl) it.thickness = thickEl.value;
     }
     if(def.isRegulator){
-      const dinEl = document.getElementById(idp+'_din');
-      if(dinEl) it.isDIN = dinEl.checked;
+      const regTypeEl = document.getElementById(idp+'_regtype');
+      if(regTypeEl) it.regType = regTypeEl.value;
     }
     const brandEl = document.getElementById(idp+'_brand');
     const modelEl = document.getElementById(idp+'_model');
@@ -2591,7 +2590,7 @@ async function loadSampleData(){
       nitrox: Math.random() > 0.7,
       items: {
         bcd: mkItem('size'), wetsuit: mkItem('wetsuit'), fins: mkItem('fins'),
-        mask: mkItem(false), regulator: Object.assign(mkItem(false), { isDIN: Math.random()>0.5 }),
+        mask: mkItem(false), regulator: Object.assign(mkItem(false), { regType: Math.random()>0.5 ? 'DIN' : 'Yoke' }),
         computer: mkItem(false),
       }
     };

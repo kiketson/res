@@ -3,11 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Hidrosfera — Experience detail template</title>
+<title>Hidrosfera — Experience details</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400;1,9..144,500&family=Public+Sans:wght@300;400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-/* Same design tokens as the main booking app — keep them in sync if you change one. */
 :root{
   --deep:#0B3D4C; --deep-2:#082B36; --teal:#1C7C82; --teal-lt:#2E9AA0;
   --sand:#EDE4D3; --sand-2:#E3D7C0; --foam:#FBFAF7; --coral:#E8734A; --coral-dk:#C85A34;
@@ -19,12 +18,6 @@
 body{ margin:0; font-family:var(--font-body); background:var(--sand); color:var(--ink); -webkit-font-smoothing:antialiased; }
 h1,h2,h3{ font-family:var(--font-display); font-weight:600; color:var(--deep); margin:0; }
 .container{ max-width:920px; margin:0 auto; padding:0 28px; }
-
-/* ---- FILL-ME markers: everything wrapped in a .fillme element is a
-   placeholder. Replace the text (and keep the tr="" attribute in sync,
-   since that's what the translation script keys off). ------------------- */
-.fillme{ outline:2px dashed var(--coral); outline-offset:4px; background:rgba(232,115,74,.05); }
-.fillme-label{ display:block; font-family:var(--font-mono); font-size:10px; letter-spacing:.08em; text-transform:uppercase; color:var(--coral-dk); margin-bottom:6px; }
 
 .topbar{ background:var(--deep); color:var(--foam); padding:16px 0; }
 .topbar .container{ display:flex; justify-content:space-between; align-items:center; }
@@ -45,14 +38,13 @@ h1,h2,h3{ font-family:var(--font-display); font-weight:600; color:var(--deep); m
 
 .card{ background:var(--foam); border-radius:var(--radius-l); box-shadow:var(--shadow-card); padding:28px; margin-bottom:24px; }
 .section-title{ font-family:var(--font-mono); font-size:11.5px; text-transform:uppercase; letter-spacing:.1em; color:var(--teal); border-bottom:1px solid var(--line); padding-bottom:10px; margin-bottom:16px; }
-.overview p{ font-size:15px; line-height:1.7; color:var(--ink); margin:0 0 12px; }
+.overview p{ font-size:15px; line-height:1.7; color:var(--ink); margin:0; white-space:pre-wrap; }
 ul.simple-list{ margin:0; padding-left:20px; font-size:14.5px; line-height:1.8; color:var(--ink-soft); }
-.gallery{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
-.gallery-item{ aspect-ratio:1; border-radius:10px; background:var(--sand-2); display:flex; align-items:center; justify-content:center; font-family:var(--font-mono); font-size:11px; color:var(--ink-soft); text-align:center; padding:8px; }
 
 .sidebar-card{ background:var(--deep); color:var(--foam); border-radius:var(--radius-l); padding:26px; position:sticky; top:24px; }
 .price-line{ font-family:var(--font-display); font-size:28px; margin-bottom:4px; }
 .price-line small{ font-family:var(--font-body); font-size:13px; opacity:.8; }
+.price-line .strike{ font-size:16px; text-decoration:line-through; opacity:.6; margin-right:8px; }
 .sidebar-card .btn{ display:block; text-align:center; width:100%; background:var(--coral); color:#fff; border:none; border-radius:999px; padding:14px; font-weight:700; font-size:14.5px; text-decoration:none; margin-top:18px; }
 .sidebar-card .btn:hover{ background:var(--coral-dk); }
 .sidebar-meta{ margin-top:18px; font-size:13px; line-height:1.8; opacity:.9; }
@@ -60,139 +52,168 @@ ul.simple-list{ margin:0; padding-left:20px; font-size:14.5px; line-height:1.8; 
 
 .two-list-cols{ display:grid; grid-template-columns:1fr 1fr; gap:24px; }
 @media (max-width:520px){ .two-list-cols{ grid-template-columns:1fr; } }
+
+.notice{ background:var(--foam); border-radius:var(--radius-l); box-shadow:var(--shadow-card); padding:40px; text-align:center; max-width:520px; margin:60px auto; }
+.notice a{ color:var(--teal); font-weight:600; }
 </style>
 </head>
 <body>
 
 <div class="topbar">
   <div class="container">
-    <span class="brand" tr="Hidrosfera">Hidrosfera</span>
-    <a href="./hidrosfera-booking.html" tr="← Back to booking">← Back to booking</a>
+    <span class="brand">Hidrosfera</span>
+    <a href="./hidrosfera-booking.html">← Back to booking</a>
   </div>
 </div>
 
-<!--
-  HOW TO USE THIS TEMPLATE
-  =========================
-  1. Duplicate this file once per experience, or make the hero/gallery
-     image sources and the text blocks below dynamic (e.g. read the
-     `?activity=` URL parameter and fetch matching content).
-  2. Every block outlined in dashed coral with a "FILL ME" label is a
-     placeholder — replace its text. The `tr="..."` attribute must be
-     kept equal to the new visible text (it's used by the translation
-     script), so update both together.
-  3. The "Book this experience" button already passes the activity id
-     back to the main booking page as ?activity=ID so step 1 arrives
-     pre-selected — just make sure the id in that link matches the
-     activity's id in the SEED_ACTIVITIES list (or your admin panel)
-     in the main booking file.
--->
-
-<div class="hero" style="background-image:none;">
-  <!-- Replace the inline background above with:
-       background-image:url('YOUR_IMAGE_URL'); background-size:cover; background-position:center;
-       (keep the gradient as a fallback for activities without a photo yet) -->
-  <div class="hero-inner">
-    <span class="hero-category fillme" tr="Snorkeling">
-      <span class="fillme-label">Category</span>Snorkeling
-    </span>
-    <h1 class="fillme" tr="[Experience name]">[Experience name]</h1>
-    <div class="hero-meta">
-      <span class="fillme" tr="🕒 Departs 8:00 AM · Returns 12:00 PM">🕒 Departs 8:00 AM · Returns 12:00 PM</span>
-      <span class="fillme" tr="⏱ 4 hrs · morning">⏱ 4 hrs · morning</span>
-    </div>
-  </div>
-</div>
-
-<div class="content">
-  <div class="container two-col">
-    <div>
-      <div class="card overview">
-        <div class="section-title" tr="Overview">Overview</div>
-        <p class="fillme" tr="[Write 2–3 sentences describing the experience: what happens, what makes it special, and who it's for.]">
-          [Write 2–3 sentences describing the experience: what happens, what makes it special, and who it's for.]
-        </p>
-      </div>
-
-      <div class="card">
-        <div class="section-title" tr="Highlights">Highlights</div>
-        <ul class="simple-list fillme">
-          <li tr="[Highlight one]">[Highlight one]</li>
-          <li tr="[Highlight two]">[Highlight two]</li>
-          <li tr="[Highlight three]">[Highlight three]</li>
-        </ul>
-      </div>
-
-      <div class="card">
-        <div class="two-list-cols">
-          <div>
-            <div class="section-title" tr="What's included">What's included</div>
-            <ul class="simple-list fillme">
-              <li tr="[Included item]">[Included item]</li>
-              <li tr="[Included item]">[Included item]</li>
-              <li tr="[Included item]">[Included item]</li>
-            </ul>
-          </div>
-          <div>
-            <div class="section-title" tr="What to bring">What to bring</div>
-            <ul class="simple-list fillme">
-              <li tr="[Bring item]">[Bring item]</li>
-              <li tr="[Bring item]">[Bring item]</li>
-            </ul>
-          </div>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="section-title" tr="Meeting point &amp; logistics">Meeting point &amp; logistics</div>
-        <p class="fillme" tr="[Meeting point address, arrival time, and any transport details.]">[Meeting point address, arrival time, and any transport details.]</p>
-      </div>
-
-      <div class="card">
-        <div class="section-title" tr="Good to know">Good to know</div>
-        <ul class="simple-list fillme">
-          <li tr="[Requirement — e.g. minimum age, swimming ability, certification needed]">[Requirement — e.g. minimum age, swimming ability, certification needed]</li>
-          <li tr="[Cancellation / weather policy note]">[Cancellation / weather policy note]</li>
-        </ul>
-      </div>
-
-      <div class="card">
-        <div class="section-title" tr="Gallery">Gallery</div>
-        <div class="gallery">
-          <div class="gallery-item fillme" tr="Image 1">Image 1<br>(replace with &lt;img&gt;)</div>
-          <div class="gallery-item fillme" tr="Image 2">Image 2<br>(replace with &lt;img&gt;)</div>
-          <div class="gallery-item fillme" tr="Image 3">Image 3<br>(replace with &lt;img&gt;)</div>
-        </div>
-      </div>
-    </div>
-
-    <div>
-      <div class="sidebar-card">
-        <div class="price-line fillme" tr="MX$2,450 per person">MX$2,450 <small>/ person</small></div>
-        <div style="font-size:13px; opacity:.85;" tr="Prices update automatically from the main booking system.">Prices update automatically from the main booking system.</div>
-        <a class="btn" id="bookBtn" href="./hidrosfera-booking.html?activity=REPLACE_WITH_ACTIVITY_ID" tr="Book this experience →">Book this experience →</a>
-        <div class="sidebar-meta">
-          <div><span tr="Duration">Duration</span><span class="fillme" tr="4 hrs">4 hrs</span></div>
-          <div><span tr="Group size">Group size</span><span class="fillme" tr="Up to 10">Up to 10</span></div>
-          <div><span tr="Difficulty">Difficulty</span><span class="fillme" tr="Beginner-friendly">Beginner-friendly</span></div>
-        </div>
-      </div>
-    </div>
-  </div>
+<div id="root">
+  <div class="notice">Loading…</div>
 </div>
 
 <script>
-  // Optional: if you make this page dynamic instead of one-file-per-activity,
-  // read the id from the URL and use it to fetch/display the right content —
-  // and to build the correct "Book this experience" link automatically.
-  (function(){
-    const params = new URLSearchParams(window.location.search);
-    const activityId = params.get('activity');
-    if(activityId){
-      const bookBtn = document.getElementById('bookBtn');
-      if(bookBtn) bookBtn.href = './hidrosfera-booking.html?activity=' + encodeURIComponent(activityId);
-    }
+/* ---------------------------------------------------------------------
+   HOST COMPATIBILITY SHIM — same as the other two files, so this page
+   reads the same shared activity data whether run inside Claude.ai or
+   on a real host with localStorage. See hidrosfera-booking.html for
+   full notes on what this means for hosting.
+   --------------------------------------------------------------------- */
+if(!window.storage){
+  window.storage = (function(){
+    const PREFIX = 'hidrosfera_store::';
+    const keyFor = (key, shared) => PREFIX + (shared ? 'shared::' : 'private::') + key;
+    return {
+      async get(key, shared){
+        const raw = localStorage.getItem(keyFor(key, shared));
+        if(raw === null) throw new Error('Key not found: ' + key);
+        return { key, value: raw, shared: !!shared };
+      },
+      async set(key, value, shared){
+        localStorage.setItem(keyFor(key, shared), value);
+        return { key, value, shared: !!shared };
+      },
+    };
   })();
+}
+async function storeGet(key, shared){
+  try{ const r = await window.storage.get(key, !!shared); return r ? JSON.parse(r.value) : null; }
+  catch(e){ return null; }
+}
+function escapeHtml(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function fmtMoney(n){ return 'MX$' + Number(n||0).toLocaleString('en-US',{maximumFractionDigits:0}); }
+function fmtTime12(t){
+  if(!t) return '';
+  const [h,m] = t.split(':').map(Number);
+  const period = h>=12 ? 'PM' : 'AM';
+  let h12 = h % 12; if(h12===0) h12=12;
+  return `${h12}:${String(m).padStart(2,'0')} ${period}`;
+}
+function asLangObject(val, isList){
+  if(val && typeof val === 'object' && !Array.isArray(val)) return val;
+  return { en: val || (isList ? [] : '') };
+}
+function loc(a, field, lang){
+  const obj = asLangObject(a[field]);
+  return obj[lang] || obj.en || '';
+}
+function locList(a, field, lang){
+  const obj = asLangObject(a[field], true);
+  return obj[lang] || obj.en || [];
+}
+function activityDisplayName(a, lang){
+  const dn = asLangObject(a.displayName);
+  return dn[lang] || dn.en || a.name || '';
+}
+function priceAfterDiscount(a){
+  if(!a.discount) return a.price;
+  if(a.discount.type==='percent') return Math.round(a.price * (1 - a.discount.value/100));
+  return Math.max(0, a.price - a.discount.value);
+}
+
+(async function(){
+  const params = new URLSearchParams(window.location.search);
+  const activityId = params.get('activity');
+  const lang = params.get('lang') || 'en';
+  const root = document.getElementById('root');
+
+  const activities = await storeGet('hidrosfera:activities', true) || [];
+  const a = activities.find(x => x.id === activityId);
+
+  if(!a){
+    root.innerHTML = `
+      <div class="notice">
+        <h2>Experience not found</h2>
+        <p style="margin-top:12px; color:var(--ink-soft);">
+          ${activityId ? `No activity matches "${escapeHtml(activityId)}".` : 'No activity was specified.'}
+          Open this page with <code>?activity=ACTIVITY_ID</code> in the URL — the easiest way is clicking
+          "Full details" on a card in the booking site itself.
+        </p>
+        <p style="margin-top:16px;"><a href="./hidrosfera-booking.html">← Go to the booking site</a></p>
+      </div>`;
+    return;
+  }
+
+  const finalPrice = priceAfterDiscount(a);
+  const hasDiscount = !!a.discount;
+  const list = (arr) => (arr||[]).map(x=>`<li>${escapeHtml(x)}</li>`).join('');
+  const mediaStyle = a.image ? `background-image:url('${a.image.replace(/'/g,"")}'); background-size:cover; background-position:center;` : '';
+
+  document.title = `Hidrosfera — ${activityDisplayName(a, lang)}`;
+
+  root.innerHTML = `
+  <div class="hero" style="${mediaStyle}">
+    <div class="hero-inner">
+      <span class="hero-category">${escapeHtml(loc(a,'category',lang))}</span>
+      <h1>${escapeHtml(activityDisplayName(a, lang))}</h1>
+      <div class="hero-meta">
+        ${loc(a,'hours',lang) ? `<span>🕒 ${escapeHtml(loc(a,'hours',lang))}</span>` : ''}
+        ${loc(a,'durationLabel',lang) ? `<span>⏱ ${escapeHtml(loc(a,'durationLabel',lang))}</span>` : ''}
+        ${a.meetupTime ? `<span>📍 Meets ${fmtTime12(a.meetupTime)}</span>` : ''}
+      </div>
+    </div>
+  </div>
+  <div class="content">
+    <div class="container two-col">
+      <div>
+        <div class="card overview">
+          <div class="section-title">Overview</div>
+          <p>${escapeHtml(loc(a,'longDesc',lang) || loc(a,'shortDesc',lang) || 'No description yet — add one in the admin panel.')}</p>
+        </div>
+        ${locList(a,'highlights',lang).length ? `
+        <div class="card">
+          <div class="section-title">Highlights</div>
+          <ul class="simple-list">${list(locList(a,'highlights',lang))}</ul>
+        </div>` : ''}
+        ${(locList(a,'included',lang).length || locList(a,'bring',lang).length) ? `
+        <div class="card">
+          <div class="two-list-cols">
+            ${locList(a,'included',lang).length ? `<div><div class="section-title">What's included</div><ul class="simple-list">${list(locList(a,'included',lang))}</ul></div>` : ''}
+            ${locList(a,'bring',lang).length ? `<div><div class="section-title">What to bring</div><ul class="simple-list">${list(locList(a,'bring',lang))}</ul></div>` : ''}
+          </div>
+        </div>` : ''}
+        ${loc(a,'meetingPoint',lang) ? `
+        <div class="card">
+          <div class="section-title">Meeting point &amp; logistics</div>
+          <p style="font-size:14.5px; color:var(--ink-soft); line-height:1.6;">${escapeHtml(loc(a,'meetingPoint',lang))}</p>
+        </div>` : ''}
+      </div>
+      <div>
+        <div class="sidebar-card">
+          <div class="price-line">
+            ${hasDiscount ? `<span class="strike">${fmtMoney(a.price)}</span>` : ''}
+            ${fmtMoney(finalPrice)} <small>/ person</small>
+          </div>
+          <div style="font-size:13px; opacity:.85;">Prices update automatically from the booking system.</div>
+          <a class="btn" href="./hidrosfera-booking.html?activity=${encodeURIComponent(a.id)}">Book this experience →</a>
+          <div class="sidebar-meta">
+            ${loc(a,'durationLabel',lang) ? `<div><span>Duration</span><span>${escapeHtml(loc(a,'durationLabel',lang))}</span></div>` : ''}
+            ${a.meetupTime ? `<div><span>Meetup time</span><span>${fmtTime12(a.meetupTime)}</span></div>` : ''}
+            ${a.divingType ? `<div><span>Type</span><span style="text-transform:capitalize;">${escapeHtml(a.divingType)}</span></div>` : ''}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+})();
 </script>
 </body>
 </html>

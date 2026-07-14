@@ -91,6 +91,10 @@ a{color:inherit;}
   position:absolute; top:4px; left:4px; height:calc(100% - 8px); width:calc(20% - 2px);
   background:var(--coral); border-radius:999px; transition: transform .25s cubic-bezier(.2,.9,.25,1); z-index:0;
 }
+@media (max-width:640px){
+  .languageBar .option{ font-size:0; padding:6px 8px; }
+  .languageBar .option::after{ content: attr(data-short); font-size:11.5px; font-family:var(--font-body); }
+}
 
 /* ============================================================
    SIGNATURE ELEMENT — the "tide line" step tracker.
@@ -166,7 +170,7 @@ main{ padding-bottom: 140px; min-height: 60vh; }
 .discount-pill{ background:var(--coral); color:#fff; font-size:10.5px; font-family:var(--font-mono); padding:2px 8px; border-radius:999px; font-weight:700; }
 .select-toggle{
   border:1.5px solid var(--deep); background:transparent; color:var(--deep); border-radius:999px; padding:9px 16px; font-weight:600; font-size:13.5px;
-  transition: all .2s ease; display:flex; align-items:center; justify-content:center; gap:6px;
+  transition: all .2s ease; display:flex; align-items:center; justify-content:center; gap:6px; flex-shrink:0; white-space:nowrap;
 }
 .select-toggle:hover{ background: var(--deep); color:#fff; }
 .activity-card.is-selected .select-toggle{ background: var(--coral); border-color:var(--coral); color:#fff; }
@@ -195,17 +199,27 @@ main{ padding-bottom: 140px; min-height: 60vh; }
 }
 .selection-list{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:center; max-height:82px; overflow-y:auto; }
 .selection-chip{
-  background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.18); padding:6px 12px 6px 12px; border-radius:999px;
-  font-size:13px; display:flex; align-items:center; gap:8px; animation: chipIn .3s ease;
+  background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.18); padding:6px 12px 6px 12px; border-radius:14px;
+  font-size:13px; display:flex; align-items:center; gap:6px; flex-wrap:wrap; max-width:min(280px, 80vw); animation: chipIn .3s ease;
+  font-family:inherit; color:var(--foam); cursor:default;
 }
+button.selection-chip{ cursor:pointer; transition:background .15s, border-color .15s; }
+button.selection-chip:hover{ background:rgba(255,255,255,.18); }
+.selection-chip-status-ok{ border-color:rgba(120,200,150,.6); background:rgba(120,200,150,.14); }
+.selection-chip-status-pending{ border-color:rgba(232,115,74,.55); background:rgba(232,115,74,.14); }
 @keyframes chipIn{ from{opacity:0; transform:scale(.85);} to{opacity:1; transform:scale(1);} }
-.selection-chip button{ background:none; border:none; color:rgba(255,255,255,.7); font-size:15px; line-height:1; padding:0; }
+.selection-chip button{ background:none; border:none; color:rgba(255,255,255,.7); font-size:15px; line-height:1; padding:0; flex-shrink:0; }
 .selection-chip button:hover{ color:#fff; }
-.selection-total{ font-family:var(--font-mono); font-size:13px; color:var(--sand); text-align:center; }
-.selection-bar-buttons{ display:flex; align-items:center; justify-content:space-between; gap:14px; }
+.selection-total{ font-family:var(--font-mono); font-size:15px; font-weight:700; color:#fff; text-align:center; white-space:nowrap; }
+.selection-bar-buttons{ display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap; }
 .bar-back-btn-hidden{ visibility:hidden; }
 @media (min-width:900px){
   .selection-bar{ left:15%; right:15%; width:70%; bottom:18px; border-radius:24px; box-shadow:0 16px 50px rgba(0,0,0,.35); }
+}
+@media (max-width:520px){
+  .selection-bar-buttons{ justify-content:center; }
+  .selection-total{ order:3; width:100%; margin-top:2px; }
+  .btn{ padding:12px 18px; font-size:13.5px; }
 }
 .btn{
   border:none; border-radius:999px; padding:13px 26px; font-weight:700; font-size:14.5px; letter-spacing:.01em;
@@ -233,9 +247,10 @@ main{ padding-bottom: 140px; min-height: 60vh; }
 /* ============================================================
    CALENDAR (dates step)
    ============================================================ */
+.dates-grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(380px, 420px)); gap:24px; justify-content:center; }
 .dates-activity-block{
-  background:var(--foam); border-radius:var(--radius-l); padding:26px; margin:0 auto 26px; box-shadow:var(--shadow-card);
-  border:2px solid transparent; max-width:420px;
+  background:var(--foam); border-radius:var(--radius-l); padding:26px; box-shadow:var(--shadow-card);
+  border:2px solid transparent; max-width:420px; width:100%;
 }
 .dates-activity-block.has-date{ border-color: var(--ok); }
 .dates-activity-block.missing-date{ border-color: var(--err); animation: shake .4s; }
@@ -300,13 +315,18 @@ main{ padding-bottom: 140px; min-height: 60vh; }
 }
 .person-card.is-complete .person-badge{ background: var(--ok); }
 .person-title{ font-family:var(--font-display); font-size:17px; color:var(--deep); }
-.person-status{ font-family:var(--font-mono); font-size:11px; text-transform:uppercase; letter-spacing:.06em; }
+.person-status{ font-family:var(--font-mono); font-size:11px; text-transform:uppercase; letter-spacing:.06em; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
 .person-status.ok{ color:var(--ok); }
 .person-status.pending{ color:var(--ink-soft); }
-.person-head-actions{ display:flex; align-items:center; gap:10px; }
+.person-progress-count{ color:var(--ink-soft); font-weight:400; text-transform:none; letter-spacing:0; }
+.person-head-left{ display:flex; align-items:center; gap:14px; cursor:pointer; flex:1; min-width:0; }
+.person-head-actions{ display:flex; align-items:center; gap:18px; }
 .icon-btn{ background:transparent; border:none; color:var(--ink-soft); font-size:16px; padding:6px; border-radius:6px; }
 .icon-btn:hover{ background:var(--err-bg); color:var(--err); }
-.chevron{ transition: transform .25s ease; color: var(--ink-soft); }
+.icon-btn-delete{ font-size:18px; padding:8px; }
+.chevron-btn{ background:var(--sand); border:none; border-radius:50%; width:38px; height:38px; display:flex; align-items:center; justify-content:center; cursor:pointer; transition: background .15s; flex-shrink:0; }
+.chevron-btn:hover{ background:var(--sand-2); }
+.chevron{ transition: transform .25s ease; color: var(--deep); font-size:18px; display:inline-block; }
 .person-card.is-collapsed .chevron{ transform: rotate(-90deg); }
 .person-body{ padding:24px; display:flex; flex-direction:column; gap:18px; }
 .person-card.is-collapsed .person-body{ display:none; }
@@ -318,7 +338,7 @@ main{ padding-bottom: 140px; min-height: 60vh; }
 .field label .req{ color:var(--coral); }
 .field input[type=text], .field input[type=email], .field input[type=date], .field input[type=number], .field select, .field textarea{
   border:1.5px solid var(--line); background:#fff; border-radius:var(--radius-s); padding:11px 13px; font-size:14.5px; color:var(--ink);
-  transition: border-color .2s ease, box-shadow .2s ease;
+  transition: border-color .2s ease, box-shadow .2s ease; width:100%;
 }
 .field input:focus, .field select:focus, .field textarea:focus{ border-color:var(--teal); box-shadow:0 0 0 3px rgba(28,124,130,.15); outline:none; }
 .field.field-error input, .field.field-error select, .field.field-error textarea{ border-color:var(--err); background:var(--err-bg); animation: shake .4s; }
@@ -335,30 +355,23 @@ main{ padding-bottom: 140px; min-height: 60vh; }
 
 .section-label{ font-family:var(--font-mono); font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--teal); margin-top:6px; padding-top:14px; border-top:1px dashed var(--line); }
 
-.equip-note{ font-size:12.5px; color:var(--ink-soft); background:var(--sand); border-radius:var(--radius-s); padding:12px 14px; line-height:1.5; }
-.equip-item{ border:1.5px solid var(--line); border-radius:var(--radius-m); padding:14px 16px; }
-.equip-item.checked{ border-color:var(--teal); background:rgba(28,124,130,.05); }
-.equip-item.field-error{ border-color:var(--err) !important; background:var(--err-bg) !important; animation: shake .4s; }
+.equip-note{ font-size:12.5px; color:var(--ink-soft); background:var(--sand); border-radius:var(--radius-s); padding:12px 14px; line-height:1.5; margin-top:10px; }
+.equip-items-grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(260px,1fr)); gap:12px; margin-top:14px; }
+.equip-item{ border:1.5px solid var(--line); border-radius:var(--radius-m); padding:14px 16px; background:#fff; transition: border-color .2s, background .2s; }
+.equip-item.status-incomplete{ border-color:var(--err); background:var(--err-bg); }
+.equip-item.status-complete{ border-color:var(--ok); background:var(--ok-bg); }
+.equip-item.field-error{ animation: shake .4s; }
 .field-grid.field-error{ outline:2px solid var(--err); outline-offset:6px; border-radius:8px; animation: shake .4s; }
-.equip-item-head{ display:flex; align-items:center; gap:10px; }
-.equip-item-head input{ width:17px; height:17px; accent-color:var(--teal); }
-.equip-item-head label{ font-weight:600; font-size:14px; flex:1; }
-.equip-item-body{ margin-top:12px; display:none; gap:12px; }
-.equip-item.checked .equip-item-body{ display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); }
-.own-regulator-row{ display:flex; align-items:center; gap:10px; margin-top:8px; font-size:13px; color:var(--ink-soft); }
-.fin-equiv-table{ font-family:var(--font-mono); font-size:11.5px; color:var(--ink-soft); background:#fff; border-radius:var(--radius-s); padding:10px 12px; margin-top:8px; line-height:1.7; border:1px solid var(--line); }
-.know-size-toggle{ display:flex; gap:10px; margin-bottom:6px; }
-.know-size-toggle label{ display:flex; align-items:center; gap:6px; font-size:13.5px; font-weight:500; background:#fff; border:1.5px solid var(--line); padding:8px 14px; border-radius:999px; }
 .eq-mode-toggle{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
 .eq-mode-toggle label{ display:flex; align-items:center; gap:6px; font-size:13.5px; font-weight:500; background:#fff; border:1.5px solid var(--line); padding:8px 14px; border-radius:999px; }
-.eq-know-toggle{ display:flex; gap:10px; flex-wrap:wrap; }
-.eq-know-toggle label{ display:flex; align-items:center; gap:6px; font-size:12.5px; font-weight:500; background:#fff; border:1.5px solid var(--line); padding:6px 12px; border-radius:999px; }
-.eq-hw-row{ display:flex; gap:10px; flex-wrap:wrap; }
-.eq-hw-row input{ width:90px; border:1.5px solid var(--line); border-radius:var(--radius-s); padding:9px 10px; font-size:13.5px; }
-.eq-hw-row select{ border:1.5px solid var(--line); border-radius:var(--radius-s); padding:9px 6px; font-size:13px; }
-.eq-bm-row{ display:flex; gap:10px; flex-wrap:wrap; }
-.eq-bm-row input{ flex:1; min-width:120px; border:1.5px solid var(--line); border-radius:var(--radius-s); padding:9px 12px; font-size:13.5px; }
-.know-size-toggle input{ accent-color:var(--teal); }
+
+.btn-toggle-pair{ display:flex; gap:6px; }
+.btn-toggle{
+  border:1.5px solid var(--line); background:#fff; color:var(--ink-soft); border-radius:var(--radius-s); padding:10px 14px;
+  font-size:13.5px; font-weight:600; cursor:pointer; transition: all .15s ease; flex:1; min-width:44px;
+}
+.btn-toggle:hover{ border-color:var(--teal); }
+.btn-toggle.active{ background:var(--teal); border-color:var(--teal); color:#fff; }
 
 .add-person-btn{
   width:100%; border:2px dashed var(--teal); background:rgba(28,124,130,.05); color:var(--teal); border-radius:var(--radius-l); padding:16px; font-weight:700; font-size:14.5px;
@@ -438,11 +451,11 @@ main{ padding-bottom: 140px; min-height: 60vh; }
     </div>
     <div class="masthead-right">
       <div class="languageBar" tr-switcher>
-        <button class="chivo em option active" data-value="en" value="en" type="button">English</button>
-        <button class="chivo em option" data-value="es" value="es" type="button">Español</button>
-        <button class="chivo em option" data-value="fr" value="fr" type="button">Français</button>
-        <button class="chivo em option" data-value="jp" value="jp" type="button">日本語</button>
-        <button class="chivo em option" data-value="pt" value="pt" type="button">Português</button>
+        <button class="chivo em option active" data-value="en" value="en" type="button" data-short="EN">English</button>
+        <button class="chivo em option" data-value="es" value="es" type="button" data-short="ES">Español</button>
+        <button class="chivo em option" data-value="fr" value="fr" type="button" data-short="FR">Français</button>
+        <button class="chivo em option" data-value="jp" value="jp" type="button" data-short="日本語">日本語</button>
+        <button class="chivo em option" data-value="pt" value="pt" type="button" data-short="PT">Português</button>
       </div>
     </div>
   </div>
@@ -466,9 +479,9 @@ main{ padding-bottom: 140px; min-height: 60vh; }
 <div class="selection-bar" id="selectionBar">
   <div class="selection-bar-inner">
     <div class="selection-list" id="selectionList"></div>
-    <div class="selection-total" id="selectionTotal" tr=""></div>
     <div class="selection-bar-buttons">
       <button class="btn btn-ghost btn-sm bar-back-btn-hidden" id="barBackBtn" tr="← Back">← Back</button>
+      <div class="selection-total" id="selectionTotal" tr=""></div>
       <button class="btn btn-primary" id="bookBtn" tr="Book these experiences">Book these experiences →</button>
     </div>
   </div>
@@ -911,7 +924,7 @@ function emptyPerson(contactOnly){
       computer:  { mode:'' },
       fins:      { mode:'', size:'' },
       mask:      { mode:'' },
-      regulator: { mode:'', isDIN:false },
+      regulator: { mode:'', regType:'' },
       wetsuit:   { mode:'', size:'' },
     };
     p._welcomeBack = null; // {date} when a returning client is matched
@@ -1214,8 +1227,8 @@ function renderSelectionBar(){
       </div>`;
     }).join('');
     const total = state.selectedActivityIds.reduce((sum,id)=>{ const a=activityById(id); return sum + (a?priceAfterDiscount(a):0); }, 0);
-    totalEl.textContent = `From ${fmtMoney(total)} / person`;
-    totalEl.setAttribute('tr', `From ${fmtMoney(total)} / person`);
+    totalEl.textContent = `From ${fmtMoneyLong(total)} per person`;
+    totalEl.setAttribute('tr', `From ${fmtMoneyLong(total)} per person`);
     bookBtn.classList.remove('hidden');
     bookBtn.textContent = 'Book these experiences →';
     bookBtn.setAttribute('tr','Book these experiences →');
@@ -1236,8 +1249,8 @@ function renderSelectionBar(){
       </div>`;
     }).join('');
     const total = grandTotalFromBookingActivities();
-    totalEl.textContent = `Est. ${fmtMoney(total)} total`;
-    totalEl.setAttribute('tr', `Est. ${fmtMoney(total)} total`);
+    totalEl.textContent = `Est. ${fmtMoneyLong(total)} total`;
+    totalEl.setAttribute('tr', `Est. ${fmtMoneyLong(total)} total`);
     bookBtn.classList.remove('hidden');
     bookBtn.textContent = 'Continue to people →';
     bookBtn.setAttribute('tr','Continue to people →');
@@ -1252,10 +1265,11 @@ function renderSelectionBar(){
     list.innerHTML = state.people.map((p,idx)=>{
       const genderLabel = p.gender === 'Male' ? 'M' : p.gender === 'Female' ? 'F' : '—';
       const age = ageFromDob(p.dob);
-      return `<div class="selection-chip">
+      const complete = isPersonComplete(p, idx);
+      return `<button type="button" class="selection-chip selection-chip-status-${complete?'ok':'pending'}" data-focus-traveler="${p.id}">
         <span tr="${escapeAttr(personDisplayName(p,idx))}">${personDisplayName(p,idx)}</span>
         <span class="chip-date">· ${genderLabel} · ${age!=null ? age+'y' : '—'}</span>
-      </div>`;
+      </button>`;
     }).join('');
     totalEl.textContent = `${state.people.length} traveler${state.people.length>1?'s':''}`;
     totalEl.setAttribute('tr', `${state.people.length} traveler${state.people.length>1?'s':''}`);
@@ -1273,8 +1287,8 @@ function renderSelectionBar(){
     list.innerHTML = `<div class="selection-chip" style="background:transparent; border:none;">
       <span tr="Review your booking before sending it to our team.">Review your booking before sending it to our team.</span>
     </div>`;
-    totalEl.textContent = `Est. ${fmtMoney(grandTotal())} total`;
-    totalEl.setAttribute('tr', `Est. ${fmtMoney(grandTotal())} total`);
+    totalEl.textContent = `Est. ${fmtMoneyLong(grandTotal())} total`;
+    totalEl.setAttribute('tr', `Est. ${fmtMoneyLong(grandTotal())} total`);
     bookBtn.classList.remove('hidden');
     bookBtn.textContent = 'Confirm booking →';
     bookBtn.setAttribute('tr','Confirm booking →');
@@ -1436,7 +1450,7 @@ function renderDatesStep(){
     const hasDate = !!ba.date;
     const isRange = hasDate && !!ba.endDate;
     const rangeLabel = isRange
-      ? `${fmtDateHuman(ba.date)} → ${fmtDateHuman(ba.endDate)} <span style="font-family:var(--font-mono); font-size:12px; color:var(--ink-soft);">(${daysBetweenInclusive(ba.date, ba.endDate)} days)</span>`
+      ? `${fmtDateHuman(ba.date)} → ${fmtDateHuman(ba.endDate)}<span style="display:block; text-align:center; font-family:var(--font-mono); font-size:12px; color:var(--ink-soft); white-space:nowrap; margin-top:4px;">(${daysBetweenInclusive(ba.date, ba.endDate)} days)</span>`
       : (hasDate ? fmtDateHuman(ba.date) : `<span class="empty" tr="Not chosen yet">Not chosen yet</span>`);
     return `
     <div class="dates-activity-block ${hasDate?'has-date':''}" data-dates-block="${ba.activityId}">
@@ -1469,7 +1483,7 @@ function renderDatesStep(){
       <span class="eyebrow" tr="Step 2 of 5">Step 2 of 5</span>
       <h1 class="step-title" tr="Pick a date for each experience">Pick a date for each experience</h1>
       <p class="step-sub" tr="Availability is set by our team and updates in real time. Dates can be booked up to two and a half years in advance.">Availability is set by our team and updates in real time. Dates can be booked up to two and a half years in advance.</p>
-      ${blocks}
+      <div class="dates-grid">${blocks}</div>
     </div>
   </div>`;
 }
@@ -1478,12 +1492,10 @@ function renderDatesStep(){
    STEP 3 — PEOPLE
    ======================================================================= */
 const CONTACT_FIELDS = ['fullName','gender','nationality','dob','dobDay','dobMonth','dobYear','allergies','email','language','notes'];
-// "Only the 1st traveler's full name and date of birth are required.
-//  For the rest, only allergies, gender and equipment rental [are required]."
-const REQUIRED_FIELDS_FIRST = ['fullName','dob','gender','allergies'];
-const REQUIRED_FIELDS_REST  = ['gender','allergies'];
-const MAIN_CONTACT_REQUIRED = ['fullName','dob']; // standalone contact behaves like traveler 1
-function requiredFieldsForIndex(idx){ return idx === 0 ? REQUIRED_FIELDS_FIRST : REQUIRED_FIELDS_REST; }
+// Every traveler needs the same four core fields, regardless of position.
+const REQUIRED_FIELDS_ALL = ['fullName','gender','dob','allergies'];
+const MAIN_CONTACT_REQUIRED = ['fullName','dob'];
+function requiredFieldsForIndex(idx){ return REQUIRED_FIELDS_ALL; }
 
 function contactFieldsOf(obj){ const o={}; CONTACT_FIELDS.forEach(k=>o[k]=obj[k]); return o; }
 
@@ -1512,11 +1524,13 @@ function updateContactField(field, value){ state.mainContact[field] = value; }
 function addPerson(){
   const p = emptyPerson(false);
   p.language = state.mainContact.language || state.pageLanguage || 'en';
+  const existingNationality = state.people.find(x=>x.nationality)?.nationality || state.mainContact.nationality || '';
+  if(existingNationality) p.nationality = existingNationality;
   state.people.push(p);
   render();
   setTimeout(()=>{
     const cards = document.querySelectorAll('.person-card');
-    cards[cards.length-1]?.scrollIntoView({behavior:'smooth', block:'center'});
+    cards[cards.length-1]?.scrollIntoView({behavior:'smooth', block:'start'});
   }, 60);
 }
 function deletePerson(personId){
@@ -1598,11 +1612,11 @@ function finSizeOptionsForGender(gender, currentVal){
 }
 
 const EQUIP_ITEMS = [
+  { key:'regulator', label:'Regulator',      hasSize:false, isRegulator:true, scubaOnly:true },
   { key:'bcd',       label:'BCD',            hasSize:true,  scubaOnly:true  },
   { key:'computer',  label:'Dive computer',  hasSize:false, scubaOnly:true  },
   { key:'fins',      label:'Fins',           hasSize:true, isFins:true },
   { key:'mask',      label:'Mask',           hasSize:false },
-  { key:'regulator', label:'Regulator',      hasSize:false, isRegulator:true, scubaOnly:true },
   { key:'wetsuit',   label:'Wetsuit',        hasSize:true },
 ];
 function bookingIncludesScuba(){
@@ -1616,11 +1630,21 @@ function visibleEquipItems(){
   const scuba = bookingIncludesScuba();
   return EQUIP_ITEMS.filter(def => scuba || !def.scubaOnly);
 }
+function setNestedPersonField(person, path, value){
+  const parts = path.split('.');
+  let obj = person;
+  for(let i=0;i<parts.length-1;i++) obj = obj[parts[i]];
+  obj[parts[parts.length-1]] = value;
+}
+function btnToggle(path, value, current, label, personId){
+  return `<button type="button" class="btn-toggle ${current===value?'active':''}" data-btn-toggle="${path}" data-btn-value="${value}" data-person="${personId}">${label}</button>`;
+}
 
 function renderEquipItemCard(person, def){
   const { key, label, hasSize, isFins, isRegulator } = def;
   const it = person.items[key];
   const mode = it.mode;
+  const complete = isItemComplete(it, hasSize);
 
   let sizeBlock = '';
   if(hasSize && mode==='rent'){
@@ -1634,24 +1658,24 @@ function renderEquipItemCard(person, def){
            ${SIZE_RANGE.map(s=>`<option value="${s}" ${it.size===s?'selected':''}>${s}</option>`).join('')}
            <option value="unknown" ${it.size==='unknown'?'selected':''} tr="I don't know my size">I don't know my size</option>
          </select>`;
-    sizeBlock = sizeControl;
+    sizeBlock = `<div class="field" style="margin-top:10px; margin-bottom:0;">${sizeControl}</div>`;
   }
 
   const dinBlock = (isRegulator && mode==='own') ? `
-    <label style="display:flex; align-items:center; gap:6px; font-size:13px; margin-left:10px;">
-      <input type="checkbox" data-eq-field="isDIN" data-eq-item="regulator" data-person="${person.id}" ${it.isDIN?'checked':''}>
-      <span tr="It's a DIN regulator">It's a DIN regulator</span>
-    </label>` : '';
+    <div class="btn-toggle-pair" style="margin-top:8px;">
+      ${btnToggle('items.regulator.regType','DIN',it.regType,'DIN',person.id)}
+      ${btnToggle('items.regulator.regType','Yoke',it.regType,'Yoke',person.id)}
+    </div>` : '';
 
   return `
-  <div class="equip-item ${mode?'checked':''}" data-field-key="eq_${key}">
+  <div class="equip-item ${complete?'status-complete':'status-incomplete'}" data-field-key="eq_${key}">
     <div style="font-weight:600; font-size:14px; margin-bottom:8px;"><span tr="${escapeAttr(label)}">${label}</span> <span class="req">*</span></div>
     <div class="eq-mode-toggle">
       <label><input type="radio" name="mode_${key}_${person.id}" data-eq-mode="rent" data-eq-item="${key}" data-person="${person.id}" ${mode==='rent'?'checked':''}> <span tr="Rent from us">Rent from us</span></label>
       <label><input type="radio" name="mode_${key}_${person.id}" data-eq-mode="own" data-eq-item="${key}" data-person="${person.id}" ${mode==='own'?'checked':''}> <span tr="No, bringing my own">No, bringing my own</span></label>
-      ${dinBlock}
     </div>
-    ${sizeBlock ? `<div class="equip-item-body" style="margin-top:10px;">${sizeBlock}</div>` : ''}
+    ${dinBlock}
+    ${sizeBlock}
     <span class="field-error-msg hidden" tr="Please choose rent or bring your own, and a size if renting">Please choose rent or bring your own, and a size if renting</span>
   </div>`;
 }
@@ -1663,10 +1687,16 @@ function nitroxEligibleActivities(){
 function renderEquipmentSection(person, idx){
   const nitroxActs = nitroxEligibleActivities();
   const nitroxRate = nitroxActs.length ? (activityById(nitroxActs[0].activityId).nitroxPricePerTank || 200) : 200;
-  const needsSharedHW = (person.items.bcd.mode==='rent' && person.items.bcd.size==='unknown') || (person.items.wetsuit.mode==='rent' && person.items.wetsuit.size==='unknown');
+  const needsSharedHW = needsSharedHWFor(person);
   const hw = person.heightWeight;
+  const allOwn = visibleEquipItems().every(d=>person.items[d.key].mode==='own');
 
   return `
+  <div class="section-label" tr="Rental equipment">Rental equipment</div>
+  <div class="field span-2 checkbox-row" style="margin-bottom:14px;">
+    <input type="checkbox" id="allOwn_${person.id}" data-all-own-equip="${person.id}" ${allOwn?'checked':''}>
+    <label for="allOwn_${person.id}" tr="I'm bringing all my own equipment">I'm bringing all my own equipment</label>
+  </div>
   <div class="equip-note" tr="${escapeAttr("Every item below needs an answer — either rent it from us or bring your own. If you rent a BCD or wetsuit and aren't sure of your size, choose \"I don't know my size\" from its dropdown and give us your height and weight below.")}">
     Every item below needs an answer — either rent it from us or bring your own. If you rent a BCD or wetsuit and aren't sure of your size, choose "I don't know my size" from its dropdown and give us your height and weight below.
   </div>
@@ -1677,26 +1707,26 @@ function renderEquipmentSection(person, idx){
       <label><span tr="Height">Height</span> <span class="req">*</span></label>
       <div style="display:flex; gap:8px;">
         <input type="number" min="0" data-hw-field="height" data-person="${person.id}" value="${hw.height}" style="flex:1;">
-        <select data-hw-field="heightUnit" data-person="${person.id}" style="width:80px;">
-          <option value="cm" ${hw.heightUnit==='cm'?'selected':''}>cm</option>
-          <option value="in" ${hw.heightUnit==='in'?'selected':''}>in</option>
-        </select>
+        <div class="btn-toggle-pair">
+          ${btnToggle('heightWeight.heightUnit','cm',hw.heightUnit,'cm',person.id)}
+          ${btnToggle('heightWeight.heightUnit','in',hw.heightUnit,'in',person.id)}
+        </div>
       </div>
     </div>
     <div class="field">
       <label><span tr="Weight">Weight</span> <span class="req">*</span></label>
       <div style="display:flex; gap:8px;">
         <input type="number" min="0" data-hw-field="weight" data-person="${person.id}" value="${hw.weight}" style="flex:1;">
-        <select data-hw-field="weightUnit" data-person="${person.id}" style="width:80px;">
-          <option value="kg" ${hw.weightUnit==='kg'?'selected':''}>kg</option>
-          <option value="lb" ${hw.weightUnit==='lb'?'selected':''}>lb</option>
-        </select>
+        <div class="btn-toggle-pair">
+          ${btnToggle('heightWeight.weightUnit','kg',hw.weightUnit,'kg',person.id)}
+          ${btnToggle('heightWeight.weightUnit','lb',hw.weightUnit,'lb',person.id)}
+        </div>
       </div>
     </div>
     <span class="field-error-msg hidden" tr="Height and weight are required when a rented size is unknown">Height and weight are required when a rented size is unknown</span>
   </div>` : ''}
 
-  <div style="display:grid; gap:12px; margin-top:14px;">
+  <div class="equip-items-grid">
     ${visibleEquipItems().map(def=>renderEquipItemCard(person, def)).join('')}
   </div>
 
@@ -1704,11 +1734,11 @@ function renderEquipmentSection(person, idx){
     <div class="field">
       <label tr="Estimated weight needed for diving/freediving (optional)">Estimated weight needed for diving/freediving (optional)</label>
       <div style="display:flex; gap:8px;">
-        <input type="number" min="0" placeholder="e.g. 6" data-est-weight="amount" data-person="${person.id}" value="${person.estimatedWeight.amount}">
-        <select data-est-weight="unit" data-person="${person.id}">
-          <option value="kg" ${person.estimatedWeight.unit==='kg'?'selected':''}>kg</option>
-          <option value="lb" ${person.estimatedWeight.unit==='lb'?'selected':''}>lb</option>
-        </select>
+        <input type="number" min="0" placeholder="e.g. 6" data-est-weight="amount" data-person="${person.id}" value="${person.estimatedWeight.amount}" style="flex:1;">
+        <div class="btn-toggle-pair">
+          ${btnToggle('estimatedWeight.unit','kg',person.estimatedWeight.unit,'kg',person.id)}
+          ${btnToggle('estimatedWeight.unit','lb',person.estimatedWeight.unit,'lb',person.id)}
+        </div>
       </div>
       <span style="font-size:11px; color:var(--ink-soft);" tr="Not sure? Leave this blank and our team will help you get it right on the day.">Not sure? Leave this blank and our team will help you get it right on the day.</span>
     </div>
@@ -1817,10 +1847,6 @@ function renderPersonFieldsGrid(person, idx){
       <label tr="Notes">Notes</label>
       <textarea data-person-field="notes" data-person="${person.id}" placeholder="Anything else we should know?">${person.notes}</textarea>
     </div>
-    <div class="field span-2 checkbox-row" style="margin-top:2px;">
-      <input type="checkbox" id="allOwn_${person.id}" data-all-own-equip="${person.id}" ${visibleEquipItems().every(d=>person.items[d.key].mode==='own')?'checked':''}>
-      <label for="allOwn_${person.id}" tr="I'm bringing all my own equipment">I'm bringing all my own equipment</label>
-    </div>
   </div>
   ${person._welcomeBack ? `
     <div class="welcome-back">
@@ -1835,40 +1861,52 @@ function isItemComplete(it, hasSize){
   if(hasSize && it.mode==='rent' && !it.size) return false;
   return true;
 }
-function isPersonComplete(p, idx){
-  const required = requiredFieldsForIndex(idx);
-  const contactOk = required.every(f=> String(p[f]||'').trim() !== '');
-  if(!contactOk) return false;
+function needsSharedHWFor(p){
+  return (p.items.bcd.mode==='rent' && p.items.bcd.size==='unknown') || (p.items.wetsuit.mode==='rent' && p.items.wetsuit.size==='unknown');
+}
+function equipmentFullyComplete(p){
   for(const def of visibleEquipItems()){
     if(!isItemComplete(p.items[def.key], def.hasSize)) return false;
   }
-  const needsSharedHW = (p.items.bcd.mode==='rent' && p.items.bcd.size==='unknown') || (p.items.wetsuit.mode==='rent' && p.items.wetsuit.size==='unknown');
-  if(needsSharedHW && (!p.heightWeight.height || !p.heightWeight.weight)) return false;
+  if(needsSharedHWFor(p) && (!p.heightWeight.height || !p.heightWeight.weight)) return false;
   return true;
+}
+function personProgress(p, idx){
+  const required = requiredFieldsForIndex(idx);
+  const done = required.filter(f=> String(p[f]||'').trim() !== '').length;
+  const equipDone = equipmentFullyComplete(p) ? 1 : 0;
+  return { done: done + equipDone, total: required.length + 1 };
+}
+function isPersonComplete(p, idx){
+  const prog = personProgress(p, idx);
+  return prog.done === prog.total;
 }
 
 function renderPersonCard(person, idx){
   const isMain = idx===0 && state.sameAsFirst;
   const complete = isPersonComplete(person, idx);
   const collapsed = !!state.collapsed[person.id];
+  const prog = personProgress(person, idx);
   return `
   <div class="person-card ${complete?'is-complete':''} ${collapsed?'is-collapsed':''}" data-person-card="${person.id}">
-    <div class="person-head" data-toggle-collapse="${person.id}">
-      <div class="person-head-left">
+    <div class="person-head">
+      <div class="person-head-left" data-toggle-collapse="${person.id}">
         <div class="person-badge">${idx+1}</div>
         <div>
           <div class="person-title" tr="Traveler ${idx+1}${isMain?' — Main Contact':''}">${person.fullName || ('Traveler ' + (idx+1))}${isMain?' <span style="font-size:11px; font-family:var(--font-mono); color:var(--teal); margin-left:6px;">MAIN CONTACT</span>':''}</div>
-          <div class="person-status ${complete?'ok':'pending'}" tr="${complete?'Complete':'Incomplete'}">${complete?'✓ Complete':'Incomplete'}</div>
+          <div class="person-status ${complete?'ok':'pending'}">
+            <span tr="${complete?'Complete':'Incomplete'}">${complete?'✓ Complete':'Incomplete'}</span>
+            <span class="person-progress-count">${prog.done} of ${prog.total} items</span>
+          </div>
         </div>
       </div>
       <div class="person-head-actions">
-        ${state.people.length>1 ? `<button class="icon-btn" data-delete-person="${person.id}" title="Remove traveler" tr="✕">✕</button>` : ''}
-        <span class="chevron">▾</span>
+        ${state.people.length>1 ? `<button class="icon-btn icon-btn-delete" data-delete-person="${person.id}" title="Remove traveler" tr="✕">✕</button>` : ''}
+        <button type="button" class="chevron-btn" data-toggle-collapse="${person.id}" aria-label="Expand or collapse"><span class="chevron">▾</span></button>
       </div>
     </div>
     <div class="person-body">
       ${renderPersonFieldsGrid(person, idx)}
-      <div class="section-label" tr="Rental equipment">Rental equipment</div>
       <div data-equip-section="${person.id}">
         ${renderEquipmentSection(person, idx)}
       </div>
@@ -2366,8 +2404,22 @@ function refreshPersonCardStyle(personId){
   if(!p || !card) return;
   const idx = state.people.indexOf(p);
   const complete = isPersonComplete(p, idx);
+  const prog = personProgress(p, idx);
   card.classList.toggle('is-complete', complete);
   card.classList.remove('is-invalid');
+  const statusEl = card.querySelector('.person-status');
+  if(statusEl){
+    statusEl.classList.toggle('ok', complete);
+    statusEl.classList.toggle('pending', !complete);
+    const labelEl = statusEl.querySelector('[tr]');
+    if(labelEl){ labelEl.textContent = complete ? '✓ Complete' : 'Incomplete'; labelEl.setAttribute('tr', complete ? 'Complete' : 'Incomplete'); }
+    const countEl = statusEl.querySelector('.person-progress-count');
+    if(countEl) countEl.textContent = `${prog.done} of ${prog.total} items`;
+  }
+  const titleEl = card.querySelector('.person-title');
+  if(titleEl && idx === 0 && state.sameAsFirst){
+    // name display can change live as they type — handled by focusout/input already via full text nodes; skip re-render here to avoid clobbering the MAIN CONTACT badge markup.
+  }
 }
 function refreshEquipmentSection(personId){
   const p = state.people.find(x=>x.id===personId);
@@ -2397,6 +2449,27 @@ function initGlobalListeners(){
   // ---- CLICK ----
   document.addEventListener('click', (e)=>{
     const t = e.target;
+
+    const btnToggleEl = t.closest('[data-btn-toggle]');
+    if(btnToggleEl){
+      const p = state.people.find(x=>x.id===btnToggleEl.dataset.person);
+      if(p){
+        setNestedPersonField(p, btnToggleEl.dataset.btnToggle, btnToggleEl.dataset.btnValue);
+        refreshEquipmentSection(p.id);
+      }
+      return;
+    }
+
+    const focusTravelerBtn = t.closest('[data-focus-traveler]');
+    if(focusTravelerBtn){
+      const targetId = focusTravelerBtn.dataset.focusTraveler;
+      state.people.forEach(p=>{ state.collapsed[p.id] = p.id !== targetId; });
+      render();
+      setTimeout(()=>{
+        document.querySelector(`[data-person-card="${targetId}"]`)?.scrollIntoView({behavior:'smooth', block:'start'});
+      }, 60);
+      return;
+    }
 
     const selectBtn = t.closest('[data-select-activity]');
     if(selectBtn){ toggleActivitySelection(selectBtn.dataset.selectActivity); return; }
@@ -2534,7 +2607,13 @@ function initGlobalListeners(){
 
     if(t.matches('[data-person-field]')){
       updatePersonField(t.dataset.person, t.dataset.personField, t.value);
-      render(); return;
+      if(t.dataset.personField === 'gender'){
+        // Gender affects fin-size options within the equipment section.
+        refreshEquipmentSection(t.dataset.person);
+      } else {
+        refreshPersonCardStyle(t.dataset.person);
+      }
+      return;
     }
     if(t.matches('[data-contact-field]')){
       updateContactField(t.dataset.contactField, t.value);
