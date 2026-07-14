@@ -769,6 +769,7 @@ function fmtTime12(t){
 }
 function meetupLine(a){ return (a && a.meetupTime) ? `Meetup: ${fmtTime12(a.meetupTime)}` : ''; }
 function escapeAttr(s){ return String(s).replace(/"/g,'&quot;'); }
+function escapeHtml(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function todayISO(){ return fmtDate(TODAY); }
 
 /* ---------------------------------------------------------------------
@@ -1007,14 +1008,21 @@ function goToStep(idx){
   render();
 }
 
+let lastStepChangeAt = 0;
 function nextStep(){
+  const now = Date.now();
+  if(now - lastStepChangeAt < 500) return; // guards against a fast double-click/tap advancing two steps at once
   if(!validateCurrentStep()) return;
+  lastStepChangeAt = now;
   state.step = Math.min(state.step + 1, STEPS.length - 1);
   state.furthestStepReached = Math.max(state.furthestStepReached, state.step);
   window.scrollTo({top:0, behavior:'smooth'});
   render();
 }
 function prevStep(){
+  const now = Date.now();
+  if(now - lastStepChangeAt < 500) return;
+  lastStepChangeAt = now;
   state.step = Math.max(state.step - 1, 0);
   window.scrollTo({top:0, behavior:'smooth'});
   render();
