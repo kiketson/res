@@ -1735,6 +1735,7 @@ function buildActivityFormHtml(a, isNew){
     <div class="field"><label>Image URL (optional — leave blank to use a color gradient)</label><input type="text" id="af_image" value="${escapeAttr(a.image||'')}" placeholder="https://…"></div>
     <div class="field"><label>Price per person (MX$)</label><input type="number" min="0" id="af_price" value="${a.price}"></div>
     <div class="field"><label>Meetup time</label><input type="time" id="af_meetuptime" value="${escapeAttr(a.meetupTime||'')}"></div>
+    <div class="field"><label>Duration (hours, for scheduling conflicts)</label><input type="number" min="0.5" step="0.5" id="af_duration_hours" value="${a.durationHours||4}"></div>
     <div class="field"><label>Discount type</label>
       <select id="af_discount_type">
         <option value="" ${!a.discount?'selected':''}>No discount</option>
@@ -1799,6 +1800,7 @@ async function saveActivityFromForm(activityId, isNew){
     durationLabel: byLang('af_duration'),
     hours: byLang('af_hours'),
     meetupTime: get('af_meetuptime'),
+    durationHours: Number(get('af_duration_hours'))||4,
     discount: discountType ? { type: discountType, value: discountVal } : null,
     multiDayDiscount: (mddMinDays >= 2 && mddVal > 0) ? { minDays: mddMinDays, type: get('af_mdd_type'), value: mddVal } : null,
     nitroxAvailable: get('af_nitrox_available') === '1',

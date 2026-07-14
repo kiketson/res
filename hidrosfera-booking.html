@@ -197,7 +197,7 @@ main{ padding-bottom: 140px; min-height: 60vh; }
 .selection-bar-inner{
   margin:0 auto; padding:14px 24px 16px; display:flex; flex-direction:column; gap:10px;
 }
-.selection-list{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:center; max-height:82px; overflow-y:auto; }
+.selection-list{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:center; max-height:min(30vh, 170px); overflow-y:auto; }
 .selection-chip{
   background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.18); padding:6px 12px 6px 12px; border-radius:14px;
   font-size:13px; display:flex; align-items:center; gap:6px; flex-wrap:wrap; max-width:min(280px, 80vw); animation: chipIn .3s ease;
@@ -207,6 +207,7 @@ button.selection-chip{ cursor:pointer; transition:background .15s, border-color 
 button.selection-chip:hover{ background:rgba(255,255,255,.18); }
 .selection-chip-status-ok{ border-color:rgba(120,200,150,.6); background:rgba(120,200,150,.14); }
 .selection-chip-status-pending{ border-color:rgba(232,115,74,.55); background:rgba(232,115,74,.14); }
+.selection-chip-add{ border-style:dashed; border-color:rgba(255,255,255,.4); font-weight:700; }
 @keyframes chipIn{ from{opacity:0; transform:scale(.85);} to{opacity:1; transform:scale(1);} }
 .selection-chip button{ background:none; border:none; color:rgba(255,255,255,.7); font-size:15px; line-height:1; padding:0; flex-shrink:0; }
 .selection-chip button:hover{ color:#fff; }
@@ -218,7 +219,7 @@ button.selection-chip:hover{ background:rgba(255,255,255,.18); }
 }
 @media (max-width:520px){
   .selection-bar-buttons{ justify-content:center; }
-  .selection-total{ order:3; width:100%; margin-top:2px; }
+  .selection-total{ order:-1; width:100%; margin-bottom:2px; }
   .btn{ padding:12px 18px; font-size:13.5px; }
 }
 .btn{
@@ -297,7 +298,7 @@ button.selection-chip:hover{ background:rgba(255,255,255,.18); }
 .contact-toggle-row{
   display:flex; align-items:center; gap:12px; background:var(--foam); border-radius:var(--radius-m); padding:16px 20px; margin-bottom:24px; box-shadow:var(--shadow-card);
 }
-.checkbox-row{ display:flex; align-items:flex-start; gap:10px; }
+.checkbox-row{ display:flex; flex-direction:row; align-items:flex-start; gap:10px; }
 .checkbox-row input[type=checkbox]{ margin-top:2px; width:18px; height:18px; accent-color:var(--coral); flex-shrink:0; }
 .checkbox-row label{ font-size:14px; line-height:1.4; }
 
@@ -637,7 +638,7 @@ async function setLocale(newLocale){
 }
 async function fetchTranslationsFor(newLocale){
   try{
-    const response = await fetch(`/res/lang/${newLocale}.json`);
+    const response = await fetch(`/lang/${newLocale}.json`);
     if(!response.ok) throw new Error('not found');
     return await response.json();
   } catch(e){
@@ -1270,7 +1271,7 @@ function renderSelectionBar(){
         <span tr="${escapeAttr(personDisplayName(p,idx))}">${personDisplayName(p,idx)}</span>
         <span class="chip-date">· ${genderLabel} · ${age!=null ? age+'y' : '—'}</span>
       </button>`;
-    }).join('');
+    }).join('') + `<button type="button" class="selection-chip selection-chip-add" data-add-traveler-chip="1" tr="+ Add traveler">+ Add traveler</button>`;
     totalEl.textContent = `${state.people.length} traveler${state.people.length>1?'s':''}`;
     totalEl.setAttribute('tr', `${state.people.length} traveler${state.people.length>1?'s':''}`);
     bookBtn.classList.remove('hidden');
@@ -1287,8 +1288,8 @@ function renderSelectionBar(){
     list.innerHTML = `<div class="selection-chip" style="background:transparent; border:none;">
       <span tr="Review your booking before sending it to our team.">Review your booking before sending it to our team.</span>
     </div>`;
-    totalEl.textContent = `Est. ${fmtMoneyLong(grandTotal())} total`;
-    totalEl.setAttribute('tr', `Est. ${fmtMoneyLong(grandTotal())} total`);
+    totalEl.textContent = `${fmtMoneyLong(grandTotal())} total`;
+    totalEl.setAttribute('tr', `${fmtMoneyLong(grandTotal())} total`);
     bookBtn.classList.remove('hidden');
     bookBtn.textContent = 'Confirm booking →';
     bookBtn.setAttribute('tr','Confirm booking →');
@@ -1332,10 +1333,17 @@ function perPersonPriceForBa(a, ba){
   }
   return total;
 }
+function fmtDateCompact(s){
+  if(!s) return '';
+  const d = parseDate(s);
+  return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
+}
+function isSmallScreen(){ return window.innerWidth <= 480; }
 function fmtBaDateRange(ba){
   if(!ba.date) return '';
-  if(ba.endDate) return `${fmtDateHuman(ba.date)} → ${fmtDateHuman(ba.endDate)} (${daysBetweenInclusive(ba.date, ba.endDate)} days)`;
-  return fmtDateHuman(ba.date);
+  const fmt = isSmallScreen() ? fmtDateCompact : fmtDateHuman;
+  if(ba.endDate) return `${fmt(ba.date)} → ${fmt(ba.endDate)} (${daysBetweenInclusive(ba.date, ba.endDate)} days)`;
+  return fmt(ba.date);
 }
 
 /* Multiday selection: click one day = single-day booking. Click a second,
@@ -1526,6 +1534,7 @@ function addPerson(){
   p.language = state.mainContact.language || state.pageLanguage || 'en';
   const existingNationality = state.people.find(x=>x.nationality)?.nationality || state.mainContact.nationality || '';
   if(existingNationality) p.nationality = existingNationality;
+  state.people.forEach((existing, idx)=>{ if(isPersonComplete(existing, idx)) state.collapsed[existing.id] = true; });
   state.people.push(p);
   render();
   setTimeout(()=>{
@@ -1750,7 +1759,8 @@ function renderEquipmentSection(person, idx){
       <input type="checkbox" data-nitrox-check="1" data-person="${person.id}" ${person.nitrox?'checked':''}>
       <span tr="Nitrox (+MX$${nitroxRate} per tank)">Nitrox (+MX$${nitroxRate} per tank)</span>
     </label>
-  </div>` : ''}`;
+  </div>` : ''}
+  <button type="button" class="btn btn-outline" style="margin-top:18px; width:100%;" data-collapse-person="${person.id}" tr="Done">Done</button>`;
 }
 
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -2005,10 +2015,51 @@ function ensureAssignmentsDefault(){
   });
 }
 
+function activityTimeRangeMinutes(a){
+  if(!a || !a.meetupTime) return null;
+  const [h,m] = a.meetupTime.split(':').map(Number);
+  const start = h*60 + m;
+  const durationMin = (a.durationHours ? Number(a.durationHours) : 4) * 60;
+  return { start, end: start + durationMin };
+}
+function baDateRangeSet(ba){
+  if(!ba.date) return null;
+  const start = parseDate(ba.date), end = parseDate(ba.endDate || ba.date);
+  return { start, end };
+}
+function datesOverlap(ba1, ba2){
+  const r1 = baDateRangeSet(ba1), r2 = baDateRangeSet(ba2);
+  if(!r1 || !r2) return false;
+  return r1.start <= r2.end && r2.start <= r1.end;
+}
+function activitiesTimeConflict(a1, a2){
+  const t1 = activityTimeRangeMinutes(a1), t2 = activityTimeRangeMinutes(a2);
+  if(!t1 || !t2) return true; // can't verify either activity's schedule is clear — be cautious and treat as a conflict
+  return t1.start < t2.end && t2.start < t1.end;
+}
 function toggleClientAssignment(activityId, personId){
   const list = state.clientAssignments[activityId] || [];
   const i = list.indexOf(personId);
-  if(i>-1) list.splice(i,1); else list.push(personId);
+  if(i>-1){ list.splice(i,1); state.clientAssignments[activityId] = list; render(); return; }
+
+  // Adding this person — check they're not already booked on an overlapping activity that day.
+  const a = activityById(activityId);
+  const ba = state.bookingActivities.find(x=>x.activityId===activityId);
+  if(a && ba){
+    for(const otherBa of state.bookingActivities){
+      if(otherBa.activityId === activityId) continue;
+      const otherAssigned = state.clientAssignments[otherBa.activityId] || [];
+      if(!otherAssigned.includes(personId)) continue;
+      if(!datesOverlap(ba, otherBa)) continue;
+      const otherActivity = activityById(otherBa.activityId);
+      if(activitiesTimeConflict(a, otherActivity)){
+        const p = state.people.find(x=>x.id===personId);
+        showToast(`${personDisplayName(p, state.people.indexOf(p))} is already booked on ${activityDisplayName(otherActivity)} at an overlapping time that day.`);
+        return;
+      }
+    }
+  }
+  list.push(personId);
   state.clientAssignments[activityId] = list;
   render();
 }
@@ -2042,7 +2093,7 @@ function equipmentCostForPerson(p){
 }
 function equipmentRentalBreakdown(){
   const byItem = {};
-  let fullSetCount = 0, fullSetCost = 0;
+  let fullSetCount = 0, fullSetCost = 0, fullSetDays = 0;
   state.people.forEach(p=>{
     const days = totalDaysForPerson(p.id);
     if(days<=0) return;
@@ -2050,15 +2101,17 @@ function equipmentRentalBreakdown(){
     if(rentedDefs.length >= 4 && state.settings.equipmentPricing.fullSetPrice){
       fullSetCount += 1;
       fullSetCost += state.settings.equipmentPricing.fullSetPrice * days;
+      fullSetDays += days;
       return;
     }
     rentedDefs.forEach(def=>{
-      if(!byItem[def.key]) byItem[def.key] = { count:0, cost:0, label:def.label };
+      if(!byItem[def.key]) byItem[def.key] = { count:0, cost:0, days:0, label:def.label };
       byItem[def.key].count += 1;
       byItem[def.key].cost += (state.settings.equipmentPricing[def.key]||0) * days;
+      byItem[def.key].days += days;
     });
   });
-  if(fullSetCount > 0) byItem.fullSet = { count: fullSetCount, cost: fullSetCost, label: 'Full equipment set (4+ items)' };
+  if(fullSetCount > 0) byItem.fullSet = { count: fullSetCount, cost: fullSetCost, days: fullSetDays, label: 'Full equipment set (4+ items)' };
   return byItem;
 }
 function equipmentGrandTotal(){ return state.people.reduce((s,p)=>s+equipmentCostForPerson(p),0); }
@@ -2079,6 +2132,29 @@ function grandTotal(){
   return state.bookingActivities.reduce((s,ba)=>s+activityCost(ba),0) + equipmentGrandTotal() + nitroxGrandTotal();
 }
 function computeSuggestedDeposit(total){ return Math.round(Math.min(total * 0.15, 4000)); }
+const LANGUAGE_NATIVE_NAMES = { en:'English', es:'Español', fr:'Français', jp:'日本語', pt:'Português' };
+function languageNativeName(code){ return LANGUAGE_NATIVE_NAMES[code] || LANGUAGE_NATIVE_NAMES.en; }
+function personActivityIds(p){
+  return state.bookingActivities.filter(ba => (state.clientAssignments[ba.activityId]||[]).includes(p.id)).map(ba=>ba.activityId);
+}
+function personTotalCost(p){
+  const activitiesCost = state.bookingActivities.reduce((sum,ba)=>{
+    if(!(state.clientAssignments[ba.activityId]||[]).includes(p.id)) return sum;
+    const a = activityById(ba.activityId);
+    return sum + perPersonPriceForBa(a, ba);
+  }, 0);
+  return activitiesCost + equipmentCostForPerson(p) + nitroxCostForPerson(p);
+}
+function personSummaryLine(p){
+  const actIds = personActivityIds(p);
+  const numExperiences = actIds.length;
+  const days = totalDaysForPerson(p.id);
+  const numRentals = visibleEquipItems().filter(def => p.items[def.key] && p.items[def.key].mode==='rent').length;
+  const total = personTotalCost(p);
+  if(numExperiences === 0) return `No experiences assigned yet = ${fmtMoneyLong(total)}`;
+  const label = numExperiences === 1 ? activityDisplayName(activityById(actIds[0])) : `${numExperiences} Experiences`;
+  return `${label} for ${days} day${days!==1?'s':''} and ${numRentals} rental${numRentals!==1?'s':''} = ${fmtMoneyLong(total)}`;
+}
 
 function equipmentItemSummary(key, it){
   if(key==='fins' && it.size) return formatFinSizeValue(it.size);
@@ -2101,7 +2177,8 @@ function equipmentSummaryLine(p){
   return parts.length ? parts.join(', ') : '—';
 }
 
-function buildResumeHtml(statusLabel, statusTone){
+function buildResumeHtml(statusLabel, statusTone, interactive){
+  if(interactive === undefined) interactive = true;
   const contact = state.sameAsFirst ? state.people[0] : state.mainContact;
   const activityRows = state.bookingActivities.map(ba=>{
     const a = activityById(ba.activityId);
@@ -2116,7 +2193,7 @@ function buildResumeHtml(statusLabel, statusTone){
         const days = ba.date ? daysBetweenInclusive(ba.date, ba.endDate||ba.date) : 1;
         const count = (state.clientAssignments[ba.activityId]||[]).length;
         const perPersonRate = priceAfterDiscount(a);
-        const parts = [`${fmtMoneyLong(perPersonRate)} per person`];
+        const parts = [`${fmtMoneyLong(perPersonRate)}`];
         if(days > 1) parts.push(`${days} days`);
         parts.push(`${count} traveler${count!==1?'s':''}`);
         return `${parts.join(' × ')} = ${fmtMoneyLong(activityCost(ba))}`;
@@ -2132,9 +2209,12 @@ function buildResumeHtml(statusLabel, statusTone){
       <div class="lg-row"><span class="k" tr="Date of birth">Date of birth</span><span class="v">${p.dob||'—'}</span></div>
       <div class="lg-row"><span class="k" tr="Allergies / dietary">Allergies / dietary</span><span class="v">${p.allergies||'—'}</span></div>
       <div class="lg-row"><span class="k" tr="Rental equipment">Rental equipment</span><span class="v">${equipmentSummaryLine(p)}</span></div>
-      ${equipmentCostForPerson(p) > 0 ? `<div class="lg-row"><span class="k" tr="Equipment cost">Equipment cost</span><span class="v">${fmtMoney(equipmentCostForPerson(p))}</span></div>` : ''}
       ${p.notes ? `<div class="lg-row"><span class="k" tr="Notes">Notes</span><span class="v">${p.notes}</span></div>` : ''}
+      <div class="lg-row" style="font-weight:700; margin-top:4px; border-top:1px dashed var(--line); padding-top:6px;"><span class="k" tr="Total for this traveler">Total for this traveler</span><span class="v">${personSummaryLine(p)}</span></div>
     </div>`).join('');
+
+  const equipBreakdown = equipmentRentalBreakdown();
+  const nitroxTotal = nitroxGrandTotal();
 
   return `
   <div class="legal-sheet">
@@ -2150,43 +2230,41 @@ function buildResumeHtml(statusLabel, statusTone){
           <div class="lg-section-title" tr="Main contact">Main contact</div>
           <div class="lg-row"><span class="k" tr="Name">Name</span><span class="v">${contact.fullName||'—'}</span></div>
           <div class="lg-row"><span class="k" tr="Email">Email</span><span class="v">${contact.email||'—'}</span></div>
-          <div class="lg-row"><span class="k" tr="Language">Language</span><span class="v">${(contact.language||'en').toUpperCase()}</span></div>
-          <button class="modify-link" data-modify-step="2" tr="Modify">Modify</button>
+          <div class="lg-row"><span class="k" tr="Language">Language</span><span class="v">${languageNativeName(contact.language)}</span></div>
+          ${interactive ? `<button class="modify-link" data-modify-step="2" tr="Modify">Modify</button>` : ''}
         </div>
         <div class="lg-section">
           <div class="lg-section-title" tr="Activities &amp; dates">Activities &amp; dates</div>
           ${activityRows}
+          ${interactive ? `
           <button class="modify-link" data-modify-step="1" tr="Modify dates">Modify dates</button>
-          <button class="modify-link" data-modify-step="0" tr="Modify experiences">Modify experiences</button>
+          <button class="modify-link" data-modify-step="0" tr="Modify experiences">Modify experiences</button>` : ''}
         </div>
         <div class="lg-section">
           <div class="lg-section-title" tr="Travelers">Travelers</div>
           ${peopleRows}
-          <button class="modify-link" data-modify-step="2" tr="Modify traveler info">Modify traveler info</button>
+          ${interactive ? `<button class="modify-link" data-modify-step="2" tr="Modify traveler info">Modify traveler info</button>` : ''}
         </div>
         <div class="lg-section">
           <div class="lg-section-title" tr="Cost breakdown">Cost breakdown</div>
-          ${(()=>{
-            const equipBreakdown = equipmentRentalBreakdown();
-            const equipTotal = equipmentGrandTotal();
-            const nitroxTotal = nitroxGrandTotal();
-            const equipRows = Object.entries(equipBreakdown).map(([key,info])=>
-              `<div class="lg-row"><span class="k" tr="${escapeAttr(info.label)}">${info.label}</span><span class="v">${info.count} item${info.count!==1?'s':''} → ${fmtMoney(info.cost)}</span></div>`
-            ).join('');
-            return `
-            ${Object.keys(equipBreakdown).length ? `
-            <div style="margin-top:6px; padding-top:10px; border-top:1px dashed var(--line);">
-              <div style="font-weight:600; font-size:13px; margin-bottom:6px;" tr="Rental equipment (items × days)">Rental equipment (items × days)</div>
-              ${equipRows}
-              <div class="lg-row" style="font-weight:600;"><span class="k" tr="Equipment subtotal">Equipment subtotal</span><span class="v">${fmtMoney(equipTotal)}</span></div>
-            </div>` : ''}
-            ${nitroxTotal>0 ? `<div class="lg-row" style="margin-top:8px;"><span class="k" tr="Nitrox">Nitrox</span><span class="v">${fmtMoney(nitroxTotal)}</span></div>` : ''}
-            `;
-          })()}
+          <div style="font-weight:600; font-size:13px; margin-bottom:6px;" tr="Experiences">Experiences</div>
+          ${state.bookingActivities.map(ba=>{
+            const a = activityById(ba.activityId);
+            return `<div class="lg-row"><span class="k" tr="${escapeAttr(activityDisplayName(a))}">${activityDisplayName(a)}</span><span class="v">${fmtMoneyLong(activityCost(ba))}</span></div>`;
+          }).join('')}
+          ${Object.keys(equipBreakdown).length ? `
+          <div style="margin-top:10px; padding-top:10px; border-top:1px dashed var(--line);">
+            <div style="font-weight:600; font-size:13px; margin-bottom:6px;" tr="Rental equipment">Rental equipment</div>
+            ${Object.entries(equipBreakdown).map(([key,info])=>{
+              const avgDays = info.count ? Math.round(info.days / info.count) : 0;
+              return `<div class="lg-row"><span class="k" tr="${escapeAttr(info.label)}">${info.label}</span><span class="v">${info.count} × ${avgDays} day${avgDays!==1?'s':''} = ${fmtMoneyLong(info.cost)}</span></div>`;
+            }).join('')}
+          </div>` : ''}
+          ${nitroxTotal>0 ? `<div class="lg-row" style="margin-top:8px;"><span class="k" tr="Nitrox">Nitrox</span><span class="v">${fmtMoneyLong(nitroxTotal)}</span></div>` : ''}
         </div>
-        <div class="lg-total-row"><span tr="Estimated total">Estimated total</span><span>${fmtMoney(grandTotal())}</span></div>
-        <div class="lg-row" style="margin-top:6px;"><span class="k" tr="Deposit to confirm booking">Deposit to confirm booking</span><span class="v">${fmtMoney(computeSuggestedDeposit(grandTotal()))}</span></div>
-        <p style="font-size:11.5px; color:var(--ink-soft); margin-top:8px;" tr="Deposit is 15% of the total, capped at MX$4,000, and is confirmed by our team along with your final booking. Final pricing is confirmed based on real-time availability.">Deposit is 15% of the total, capped at MX$4,000, and is confirmed by our team along with your final booking. Final pricing is confirmed based on real-time availability.</p>
+        <div class="lg-total-row"><span tr="Total">Total</span><span>${fmtMoneyLong(grandTotal())}</span></div>
+        <div class="lg-row" style="margin-top:6px;"><span class="k" tr="Deposit to confirm booking">Deposit to confirm booking</span><span class="v">${fmtMoneyLong(computeSuggestedDeposit(grandTotal()))}</span></div>
+        <p style="font-size:11.5px; color:var(--ink-soft); margin-top:8px;" tr="After the reservation has been revised, the information to make a deposit will be delivered. No reservation is made without a deposit.">After the reservation has been revised, the information to make a deposit will be delivered. No reservation is made without a deposit.</p>
       </div>
     </div>
   </div>`;
@@ -2460,6 +2538,16 @@ function initGlobalListeners(){
       return;
     }
 
+    const addTravelerChip = t.closest('[data-add-traveler-chip]');
+    if(addTravelerChip){ addPerson(); return; }
+
+    const collapsePersonBtn = t.closest('[data-collapse-person]');
+    if(collapsePersonBtn){
+      state.collapsed[collapsePersonBtn.dataset.collapsePerson] = true;
+      render();
+      return;
+    }
+
     const focusTravelerBtn = t.closest('[data-focus-traveler]');
     if(focusTravelerBtn){
       const targetId = focusTravelerBtn.dataset.focusTraveler;
@@ -2533,7 +2621,7 @@ function initGlobalListeners(){
     if(t.id === 'previewEmailBtn'){
       showModal(`
         <button class="icon-btn modal-close-float" onclick="closeModal()" aria-label="Close" tr="✕">✕</button>
-        ${buildResumeHtml('Confirmation is pending', 'warn')}
+        ${buildResumeHtml('Confirmation is pending', 'warn', false)}
       `);
       return;
     }
