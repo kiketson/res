@@ -114,6 +114,7 @@ main{ padding:32px 0 80px; }
 .lg-section{ margin-bottom:22px; }
 .lg-section-title{ font-family:var(--font-mono); font-size:11px; text-transform:uppercase; letter-spacing:.1em; color:var(--teal); border-bottom:1px solid var(--line); padding-bottom:8px; margin-bottom:12px; }
 .lg-activity-card{ border:1px solid var(--line); border-radius:10px; padding:14px; margin-bottom:10px; }
+.lg-activity-card-warn{ border-color:var(--err); background:var(--err-bg); }
 .lg-activity-card h4{ font-size:14.5px; color:var(--deep); margin-bottom:6px; }
 .lg-total-row{ display:flex; justify-content:space-between; font-size:18px; font-family:var(--font-display); color:var(--deep); padding-top:12px; border-top:2px solid var(--deep); margin-top:6px; }
 
@@ -365,6 +366,7 @@ function fmtDate(d){ return d.toISOString().slice(0,10); }
 function parseDate(s){ const [y,m,day] = s.split('-').map(Number); return new Date(y, m-1, day); }
 function fmtDateHuman(s){ if(!s) return ''; const d=parseDate(s); return d.toLocaleDateString('en-US',{month:'short', day:'numeric', year:'numeric'}); }
 function fmtMoney(n){ return 'MX$' + Number(n||0).toLocaleString('en-US',{maximumFractionDigits:0}); }
+function fmtMoneyLong(n){ return '$' + Number(n||0).toLocaleString('en-US',{maximumFractionDigits:0}) + ' MXN'; }
 function fmtTime12(t){
   if(!t) return '';
   const [h,m] = t.split(':').map(Number);
@@ -766,6 +768,45 @@ function personEquipmentCost(b, p){
   const rentedKeys = Object.keys(EQUIP_LABELS_ADMIN).filter(k=> p.items && p.items[k] && p.items[k].mode==='rent');
   if(rentedKeys.length >= 4 && ep.fullSetPrice) return ep.fullSetPrice * days;
   return rentedKeys.reduce((s,k)=> s + (ep[k]||0) * days, 0);
+}
+const LANGUAGE_NATIVE_NAMES_ADMIN = { en:'English', es:'Español', fr:'Français', jp:'日本語', pt:'Português' };
+function languageNativeNameAdmin(code){ return LANGUAGE_NATIVE_NAMES_ADMIN[code] || LANGUAGE_NATIVE_NAMES_ADMIN.en; }
+function equipmentRentalBreakdownAdmin(b){
+  const ep = state.settings.equipmentPricing || {};
+  const byItem = {};
+  let fullSetCount = 0, fullSetCost = 0, fullSetDays = 0;
+  (b.people||[]).forEach(p=>{
+    const days = personDaysInBooking(b, p);
+    if(days<=0) return;
+    const rentedKeys = Object.keys(EQUIP_LABELS_ADMIN).filter(k=> p.items && p.items[k] && p.items[k].mode==='rent');
+    if(rentedKeys.length >= 4 && ep.fullSetPrice){
+      fullSetCount += 1; fullSetCost += ep.fullSetPrice * days; fullSetDays += days;
+      return;
+    }
+    rentedKeys.forEach(k=>{
+      if(!byItem[k]) byItem[k] = { count:0, cost:0, days:0, label:EQUIP_LABELS_ADMIN[k] };
+      byItem[k].count += 1;
+      byItem[k].cost += (ep[k]||0) * days;
+      byItem[k].days += days;
+    });
+  });
+  if(fullSetCount>0) byItem.fullSet = { count: fullSetCount, cost: fullSetCost, days: fullSetDays, label: 'Full equipment set (4+ items)' };
+  return byItem;
+}
+function personActivitiesForAdmin(b, p){
+  return (b.activities||[]).filter(act => (act.assignedPersonIds||[]).includes(p.id));
+}
+function personSummaryLineAdmin(b, p){
+  const acts = personActivitiesForAdmin(b, p);
+  const numExperiences = acts.length;
+  const days = personDaysInBooking(b, p);
+  const numRentals = Object.keys(EQUIP_LABELS_ADMIN).filter(k=> p.items && p.items[k] && p.items[k].mode==='rent').length;
+  const activitiesCost = acts.reduce((s,act)=> s + (act.unitPrice||0), 0);
+  const total = activitiesCost + personEquipmentCost(b, p);
+  if(numExperiences === 0) return `No experiences assigned = ${fmtMoneyLong(total)}`;
+  const label = numExperiences === 1 ? activityDisplayName(activityById(acts[0].activityId)) : `${numExperiences} Experiences`;
+  const rentalsPart = numRentals > 0 ? ` and ${numRentals} rental${numRentals!==1?'s':''}` : '';
+  return `${label} for ${days} day${days!==1?'s':''}${rentalsPart} = ${fmtMoneyLong(total)}`;
 }
 function bookingCostBreakdown(b){
   const overrides = b.amountOverrides || {};
@@ -1429,29 +1470,41 @@ async function saveAmounts(bookingId){
 function buildClientFacingResumeHtml(b, statusLabel, statusTone){
   const bd = bookingCostBreakdown(b);
   const deposit = (b.depositOverride != null) ? Number(b.depositOverride) : computeSuggestedDeposit(bookingTotalAfterDiscount(b));
+  const equipBreakdown = equipmentRentalBreakdownAdmin(b);
 
-  const activityRows = bd.activityLines.map(l=>{
-    const act = (b.activities||[]).find(a=>a.activityId===l.activityId);
-    const names = (act && act.assignedPersonIds || []).map(id=>{ const p=b.people.find(x=>x.id===id); return p?p.fullName||'—':'—'; }).join(', ');
+  const activityRows = (b.activities||[]).map(act=>{
+    const a = activityById(act.activityId);
+    const names = (act.assignedPersonIds||[]).map(id=>{ const p=b.people.find(x=>x.id===id); return p?p.fullName||'—':'—'; });
+    const days = act.date ? adminDaysBetween(act.date, act.endDate) : 1;
+    const count = (act.assignedPersonIds||[]).length;
+    const perPersonRate = adminUnitPrice(a);
+    const parts = [`${fmtMoneyLong(perPersonRate)}`];
+    if(days > 1) parts.push(`${days} days`);
+    parts.push(`${count} traveler${count!==1?'s':''}`);
     return `
     <div class="lg-activity-card">
-      <h4>${l.icon} ${escapeHtml(l.label)}</h4>
-      <div class="lg-row"><span class="k">Date</span><span class="v">${act?fmtBaRange(act):''}</span></div>
-      <div class="lg-row"><span class="k">Participants</span><span class="v">${escapeHtml(names||'—')}</span></div>
-      <div class="lg-row"><span class="k">Price</span><span class="v">${fmtMoney(act?act.unitPrice:0)}/person × ${l.days} day${l.days!==1?'s':''} × ${l.count} traveler${l.count!==1?'s':''} = ${fmtMoney(l.subtotal)}</span></div>
+      <h4>${a?a.icon:'❓'} ${escapeHtml(a?activityDisplayName(a):'Unknown experience')}</h4>
+      <div class="lg-row"><span class="k">Date</span><span class="v">${fmtBaRange(act)}</span></div>
+      ${a && a.meetupTime ? `<div class="lg-row"><span class="k">Meetup time</span><span class="v">${fmtTime12(a.meetupTime)}</span></div>` : ''}
+      <div class="lg-row" style="align-items:flex-start;"><span class="k">Participants [${names.length}]</span><span class="v">${names.length ? names.map(n=>`<div>${escapeHtml(n)}</div>`).join('') : '—'}</span></div>
+      <div class="lg-row"><span class="k">Price</span><span class="v">${parts.join(' × ')} = <strong>${fmtMoneyLong(act.unitPrice*count)}</strong></span></div>
     </div>`;
   }).join('');
 
-  const peopleRows = (b.people||[]).map((p,i)=>`
-    <div class="lg-activity-card">
+  const peopleRows = (b.people||[]).map((p,i)=>{
+    const unassigned = personActivitiesForAdmin(b, p).length === 0;
+    return `
+    <div class="lg-activity-card ${unassigned?'lg-activity-card-warn':''}">
       <h4>${escapeHtml(p.fullName || 'Traveler '+(i+1))}</h4>
       <div class="lg-row"><span class="k">Gender</span><span class="v">${escapeHtml(p.gender||'—')}</span></div>
+      <div class="lg-row"><span class="k">Nationality</span><span class="v">${escapeHtml(p.nationality||'—')}</span></div>
       <div class="lg-row"><span class="k">Date of birth</span><span class="v">${p.dob?fmtDateHuman(p.dob):'—'}</span></div>
       <div class="lg-row"><span class="k">Allergies / dietary</span><span class="v">${escapeHtml(p.allergies||'—')}</span></div>
       <div class="lg-row"><span class="k">Rental equipment</span><span class="v">${escapeHtml(equipmentSummaryLineAdmin(p))}</span></div>
-      <div class="lg-row"><span class="k">Equipment cost</span><span class="v">${fmtMoney(personEquipmentCost(b,p))}</span></div>
       ${p.notes ? `<div class="lg-row"><span class="k">Notes</span><span class="v">${escapeHtml(p.notes)}</span></div>` : ''}
-    </div>`).join('');
+      <div class="lg-row" style="font-weight:700; margin-top:4px; border-top:1px dashed var(--line); padding-top:6px;"><span class="k">Total for this traveler</span><span class="v">${personSummaryLineAdmin(b, p)}</span></div>
+    </div>`;
+  }).join('');
 
   return `
   <div class="legal-sheet">
@@ -1473,7 +1526,7 @@ function buildClientFacingResumeHtml(b, statusLabel, statusTone){
         <div class="lg-section-title">Main contact</div>
         <div class="lg-row"><span class="k">Name</span><span class="v">${escapeHtml(bookingContactName(b))}</span></div>
         <div class="lg-row"><span class="k">Email</span><span class="v">${escapeHtml((b.mainContact&&b.mainContact.email)||'—')}</span></div>
-        <div class="lg-row"><span class="k">Language</span><span class="v">${((b.mainContact&&b.mainContact.language)||b.pageLanguage||'en').toUpperCase()}</span></div>
+        <div class="lg-row"><span class="k">Language</span><span class="v">${languageNativeNameAdmin((b.mainContact&&b.mainContact.language)||b.pageLanguage)}</span></div>
       </div>
       <div class="lg-section">
         <div class="lg-section-title">Activities &amp; dates</div>
@@ -1485,13 +1538,23 @@ function buildClientFacingResumeHtml(b, statusLabel, statusTone){
       </div>
       <div class="lg-section">
         <div class="lg-section-title">Cost breakdown</div>
-        <div class="lg-row"><span class="k">Rental equipment (all travelers)</span><span class="v">${fmtMoney(bd.equipmentTotal)}</span></div>
-        ${b.discount ? `<div class="lg-row"><span class="k">Subtotal</span><span class="v">${fmtMoney(bd.grandTotal)}</span></div>
-        <div class="lg-row" style="color:var(--coral-dk);"><span class="k">Discount</span><span class="v">${b.discount.type==='percent' ? b.discount.value+'% off' : '−'+fmtMoney(b.discount.value)}</span></div>` : ''}
+        <div style="font-weight:600; font-size:13px; margin-bottom:6px;">Experiences</div>
+        ${bd.activityLines.map(l=>`<div class="lg-row"><span class="k">${escapeHtml(l.label)}</span><span class="v">${fmtMoneyLong(l.subtotal)}</span></div>`).join('')}
+        ${Object.keys(equipBreakdown).length ? `
+        <div style="margin-top:10px; padding-top:10px; border-top:1px dashed var(--line);">
+          <div style="font-weight:600; font-size:13px; margin-bottom:6px;">Rental equipment</div>
+          ${Object.entries(equipBreakdown).map(([key,info])=>{
+            const avgDays = info.count ? Math.round(info.days/info.count) : 0;
+            return `<div class="lg-row"><span class="k">${escapeHtml(info.label)}</span><span class="v">${info.count} × ${avgDays} day${avgDays!==1?'s':''} = ${fmtMoneyLong(info.cost)}</span></div>`;
+          }).join('')}
+        </div>` : ''}
+        ${b.discount ? `<div class="lg-row" style="margin-top:10px;"><span class="k">Subtotal</span><span class="v">${fmtMoneyLong(bd.grandTotal)}</span></div>
+        <div class="lg-row" style="color:var(--coral-dk);"><span class="k">Discount</span><span class="v">${b.discount.type==='percent' ? b.discount.value+'% off' : '−'+fmtMoneyLong(b.discount.value)}</span></div>` : ''}
       </div>
-      <div class="lg-total-row"><span>Total</span><span>${fmtMoney(bookingTotalAfterDiscount(b))}</span></div>
-      <div class="lg-row" style="margin-top:6px;"><span class="k">Deposit to confirm booking</span><span class="v">${fmtMoney(deposit)}</span></div>
-      <div class="lg-row"><span class="k">Collected so far</span><span class="v">${fmtMoney(bookingCollected(b))}</span></div>
+      <div class="lg-total-row"><span>Total</span><span>${fmtMoneyLong(bookingTotalAfterDiscount(b))}</span></div>
+      <div class="lg-row" style="margin-top:6px;"><span class="k">Deposit to confirm booking</span><span class="v">${fmtMoneyLong(deposit)}</span></div>
+      <div class="lg-row"><span class="k">Collected so far</span><span class="v">${fmtMoneyLong(bookingCollected(b))}</span></div>
+      <p style="font-size:11.5px; color:var(--ink-soft); margin-top:8px;">After the reservation has been revised, the information to make a deposit will be delivered. No reservation is made without a deposit.</p>
     </div>
   </div>`;
 }
@@ -2683,7 +2746,7 @@ async function loadSampleData(){
 
     const booking = {
       id: uid('bk'),
-      bookingCode: `HDS-${dateObj.getFullYear()}-${Math.random().toString(36).slice(2,7).toUpperCase()}`,
+      bookingCode: `HIDR-${String(dateObj.getFullYear()).slice(-2)}${String(dateObj.getMonth()+1).padStart(2,'0')}-${String(i+1).padStart(4,'0')}`,
       createdAt: createdAt.toISOString(), status,
       pageLanguage: mainPerson.language, sameAsFirst: true,
       mainContact: { fullName: mainPerson.fullName, gender: mainPerson.gender, nationality: mainPerson.nationality, dob: mainPerson.dob, dobDay: mainPerson.dobDay, dobMonth: mainPerson.dobMonth, dobYear: mainPerson.dobYear, allergies: mainPerson.allergies, email: mainEmail, language: mainPerson.language, notes:'' },
