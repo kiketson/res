@@ -129,12 +129,18 @@ tr.table-row:hover{ background:rgba(28,124,130,.05); cursor:pointer; }
 
 .modal-backdrop{ position:fixed; inset:0; background:rgba(8,32,40,.55); z-index:200; display:flex; align-items:center; justify-content:center; padding:20px; overflow-y:auto; }
 .modal-box{ background:#fff; border-radius:var(--radius-l); max-width:760px; width:100%; max-height:90vh; overflow-y:auto; padding:30px; box-shadow:var(--shadow-pop); position:relative; margin:auto; }
-.modal-close{ position:sticky; top:16px; display:block; margin:0 0 -32px auto; background:var(--sand); border:none; width:32px; height:32px; border-radius:50%; font-size:15px; color:var(--deep); z-index:5; box-shadow:0 2px 8px rgba(11,61,76,.15); }
+.modal-nav-row{ position:sticky; top:16px; display:flex; justify-content:space-between; margin-bottom:-32px; z-index:5; pointer-events:none; }
+.modal-nav-row > button{ pointer-events:auto; background:var(--sand); border:none; width:32px; height:32px; border-radius:50%; font-size:15px; color:var(--deep); box-shadow:0 2px 8px rgba(11,61,76,.15); }
+.modal-nav-row > button:only-child{ margin-left:auto; }
 
 .toast{ position:fixed; top:20px; right:24px; background:var(--deep); color:#fff; padding:14px 20px; border-radius:var(--radius-s); box-shadow:var(--shadow-pop); z-index:300; font-size:14px; max-width:320px; animation:toastIn .3s ease; }
 @keyframes toastIn{ from{opacity:0; transform:translateX(20px);} to{opacity:1; transform:translateX(0);} }
 
 .checkbox-row{ display:flex; align-items:center; gap:8px; font-size:13.5px; }
+.unit-toggle{ display:flex; gap:4px; }
+.unit-toggle-btn{ border:1.5px solid var(--line); background:#fff; padding:0 10px; border-radius:6px; cursor:pointer; font-size:13px; display:flex; align-items:center; justify-content:center; flex:1; min-width:40px; }
+.unit-toggle-btn input{ display:none; }
+.unit-toggle-btn:has(input:checked){ background:var(--teal); color:#fff; border-color:var(--teal); font-weight:600; }
 .checkbox-row input{ width:16px; height:16px; accent-color:var(--teal); }
 
 /* Calendar (bookings + availability) */
@@ -430,18 +436,33 @@ function showToast(msg){
   host.appendChild(el);
   setTimeout(()=>{ el.style.transition='opacity .3s'; el.style.opacity='0'; setTimeout(()=>el.remove(),300); }, 3200);
 }
-function showModal(html){
+let modalStack = []; // stack of "redraw the previous view" callbacks
+function renderModalChrome(html){
   const host = document.getElementById('modalHost');
   const existingBox = host.querySelector('.modal-box');
   const prevScroll = existingBox ? existingBox.scrollTop : 0;
   host.innerHTML = `<div class="modal-backdrop" id="modalBackdrop"><div class="modal-box">
-    <button class="modal-close" onclick="closeModal()" aria-label="Close">✕</button>
+    <div class="modal-nav-row">
+      ${modalStack.length ? `<button onclick="modalGoBack()" aria-label="Back">←</button>` : ''}
+      <button onclick="modalGoBack()" aria-label="Close">✕</button>
+    </div>
     ${html}
   </div></div>`;
   const newBox = host.querySelector('.modal-box');
   if(newBox && prevScroll) newBox.scrollTop = prevScroll;
 }
-function closeModal(){ document.getElementById('modalHost').innerHTML = ''; }
+function showModal(html, onBack){
+  if(onBack) modalStack.push(onBack);
+  renderModalChrome(html);
+}
+function refreshModal(html){
+  renderModalChrome(html); // redraws the current level without touching the back-stack
+}
+function modalGoBack(){
+  const fn = modalStack.pop();
+  if(fn) fn(); else closeModal();
+}
+function closeModal(){ modalStack = []; document.getElementById('modalHost').innerHTML = ''; }
 
 /* ---------------------------------------------------------------------
    AUTH
@@ -847,8 +868,14 @@ function openBookingDetail(bookingId){
   state.editingAmountsFor = null;
   showModal(renderBookingModal(bookingId));
 }
+function openBookingDetailFromClient(bookingId, email){
+  state.bookingDraft = null;
+  state.addingPaymentFor = null;
+  state.editingAmountsFor = null;
+  showModal(renderBookingModal(bookingId), () => openClientDetail(email));
+}
 function refreshBookingModal(bookingId){
-  showModal(renderBookingModal(bookingId));
+  refreshModal(renderBookingModal(bookingId));
 }
 function renderBookingModal(bookingId){
   const b = state.bookings.find(x=>x.id===bookingId);
@@ -864,6 +891,31 @@ function formatFinSizeAdmin(val){
   const row = table.find(r=>r[0]===code);
   if(!row) return val;
   return `${label} ${code} — EU ${row[1]} · MX ${row[2]} · US ${row[3]}`;
+}
+function equipmentSummaryLineClientFacing(p){
+  if(!p.items) return '—';
+  const labels = { bcd:'BCD', computer:'Dive computer', fins:'Fins', mask:'Mask', regulator:'Regulator', wetsuit:'Wetsuit' };
+  const ownItems = [], rentalItems = [];
+  Object.keys(labels).forEach(key=>{
+    const it = p.items[key];
+    if(!it || !it.mode) return;
+    if(it.mode === 'own') ownItems.push(labels[key]);
+    else if(it.mode === 'rent'){
+      let sizeText = '';
+      if(key==='fins' && it.size) sizeText = formatFinSizeAdmin(it.size);
+      else if(it.size && it.size !== 'unknown') sizeText = it.size;
+      rentalItems.push(sizeText ? `${labels[key]} (${sizeText})` : labels[key]);
+    }
+  });
+  if((p.items.bcd.mode==='rent' && p.items.bcd.size==='unknown') || (p.items.wetsuit.mode==='rent' && p.items.wetsuit.size==='unknown')){
+    const hw = p.heightWeight;
+    if(hw && (hw.height||hw.weight)) rentalItems.push(`H/W: ${hw.height}${hw.heightUnit||''} / ${hw.weight}${hw.weightUnit||''}`);
+  }
+  const lines = [];
+  if(ownItems.length) lines.push(`Own - ${ownItems.join(', ')}`);
+  if(rentalItems.length) lines.push(`Rental - ${rentalItems.join(', ')}`);
+  if(p.nitrox) lines.push('Nitrox');
+  return lines.length ? lines.join('<br>') : '—';
 }
 function equipmentSummaryLineAdmin(p){
   if(!p.items) return '—';
@@ -1500,7 +1552,7 @@ function buildClientFacingResumeHtml(b, statusLabel, statusTone){
       <div class="lg-row"><span class="k">Nationality</span><span class="v">${escapeHtml(p.nationality||'—')}</span></div>
       <div class="lg-row"><span class="k">Date of birth</span><span class="v">${p.dob?fmtDateHuman(p.dob):'—'}</span></div>
       <div class="lg-row"><span class="k">Allergies / dietary</span><span class="v">${escapeHtml(p.allergies||'—')}</span></div>
-      <div class="lg-row"><span class="k">Rental equipment</span><span class="v">${escapeHtml(equipmentSummaryLineAdmin(p))}</span></div>
+      <div class="lg-row"><span class="k">Rental equipment</span><span class="v">${equipmentSummaryLineClientFacing(p)}</span></div>
       ${p.notes ? `<div class="lg-row"><span class="k">Notes</span><span class="v">${escapeHtml(p.notes)}</span></div>` : ''}
       <div class="lg-row" style="font-weight:700; margin-top:4px; border-top:1px dashed var(--line); padding-top:6px;"><span class="k">Total for this traveler</span><span class="v">${personSummaryLineAdmin(b, p)}</span></div>
     </div>`;
@@ -2165,11 +2217,11 @@ function ownEquipFieldsHtml(snap, idPrefix){
     </div>
     <div class="field" style="margin-bottom:0;"><label>Weights used</label>
       <div style="display:flex; gap:6px;">
-        <input type="number" min="0" id="${idPrefix}WeightsAmount" value="${escapeAttr(wu.amount||'')}" style="flex:1;">
-        <select id="${idPrefix}WeightsUnit">
-          <option value="kg" ${wu.unit==='kg'?'selected':''}>kg</option>
-          <option value="lb" ${wu.unit==='lb'?'selected':''}>lb</option>
-        </select>
+        <input type="number" min="0" id="${idPrefix}WeightsAmount" value="${escapeAttr(wu.amount||'')}" style="flex:2; min-width:0;">
+        <div class="unit-toggle" style="flex:1;">
+          <label class="unit-toggle-btn"><input type="radio" name="${idPrefix}WeightsUnit" value="kg" ${(!wu.unit||wu.unit==='kg')?'checked':''}>kg</label>
+          <label class="unit-toggle-btn"><input type="radio" name="${idPrefix}WeightsUnit" value="lb" ${wu.unit==='lb'?'checked':''}>lb</label>
+        </div>
       </div>
     </div>
   </div>`;
@@ -2193,16 +2245,25 @@ function openClientDetail(email){
           <h4>${fmtDateHuman(h.date)} — ${escapeHtml(activitiesLabel)}</h4>
           <div class="meta">Equipment: ${escapeHtml(equip)}</div>
         </div>
-        ${booking ? `<button class="btn btn-outline btn-sm" data-open-booking="${booking.id}" style="flex-shrink:0;">Open reservation</button>` : ''}
+        ${booking ? `<button class="btn btn-outline btn-sm" data-open-booking-from-client="${booking.id}" data-client-email="${escapeAttr(email)}" style="flex-shrink:0;">Open reservation</button>` : ''}
       </div>
     </div>`;
   }).join('');
 
+  const totalDays = rec.history.reduce((sum,h)=>{
+    const booking = findBookingByCode(h.bookingCode);
+    if(!booking) return sum;
+    const p = (booking.people||[]).find(x=>x.email && x.email.toLowerCase()===email.toLowerCase());
+    if(!p) return sum;
+    return sum + personDaysInBooking(booking, p);
+  }, 0);
+
   showModal(`
     <div style="padding-right:30px;">
-      <h3 style="margin-bottom:2px;">Edit client profile</h3>
-      <div style="font-size:12px; color:var(--ink-soft); margin-bottom:14px;">This updates their most recent visit record — it doesn't rewrite the history of past trips.</div>
-      <div class="field" style="margin-bottom:14px;">
+      <h3 style="margin-bottom:4px; font-size:26px;">${escapeHtml(snap.fullName || 'Unknown')}</h3>
+      <div style="font-size:13px; color:var(--ink-soft);">${escapeHtml(snap.gender||'—')} · ${age!=null?age+' yrs':'—'} · [${languageNativeNameAdmin(snap.language)}] · ${totalDays} day${totalDays!==1?'s':''} of experiences with us</div>
+      <div style="font-size:12px; color:var(--ink-soft); margin-top:10px;">This updates their most recent visit record — it doesn't rewrite the history of past trips.</div>
+      <div class="field" style="margin-bottom:14px; margin-top:14px;">
         <label>Email</label>
         <div style="display:flex; gap:8px;">
           <input type="text" readonly value="${escapeAttr(email)}" onclick="this.select()" style="flex:1; font-family:var(--font-mono); font-size:13px;">
@@ -2277,13 +2338,17 @@ async function saveClientProfile(email){
   renderTab();
   openClientDetail(email);
 }
+function getRadioValue(name, fallback){
+  const el = document.querySelector(`input[name="${name}"]:checked`);
+  return el ? el.value : fallback;
+}
 async function saveOwnEquipDetailsForEmail(email){
   const rec = state.clients[email];
   if(!rec || !rec.history.length) return;
   const ownEquipment = readOwnEquipmentFromForm('own');
   const weightsUsed = {
     amount: (document.getElementById('ownWeightsAmount')||{}).value || '',
-    unit: (document.getElementById('ownWeightsUnit')||{}).value || 'kg',
+    unit: getRadioValue('ownWeightsUnit', 'kg'),
   };
   const latest = latestHistoryEntry(rec);
   latest.snapshot.ownEquipment = ownEquipment;
@@ -2376,8 +2441,11 @@ function openTravelerPopup(bookingId, personIndex){
     <div class="field-grid" style="margin-top:12px;">
       <div class="field" style="margin-bottom:0;"><label>Weights used</label>
         <div style="display:flex; gap:6px;">
-          <input type="number" min="0" id="rsvWeightsAmount" value="${escapeAttr(wu.amount||'')}" style="flex:1;">
-          <select id="rsvWeightsUnit"><option value="kg" ${wu.unit==='kg'?'selected':''}>kg</option><option value="lb" ${wu.unit==='lb'?'selected':''}>lb</option></select>
+          <input type="number" min="0" id="rsvWeightsAmount" value="${escapeAttr(wu.amount||'')}" style="flex:2; min-width:0;">
+          <div class="unit-toggle" style="flex:1;">
+            <label class="unit-toggle-btn"><input type="radio" name="rsvWeightsUnit" value="kg" ${(!wu.unit||wu.unit==='kg')?'checked':''}>kg</label>
+            <label class="unit-toggle-btn"><input type="radio" name="rsvWeightsUnit" value="lb" ${wu.unit==='lb'?'checked':''}>lb</label>
+          </div>
         </div>
       </div>
       <div class="field" style="margin-bottom:0;"><label>Nitrox</label>
@@ -2386,7 +2454,7 @@ function openTravelerPopup(bookingId, personIndex){
     </div>
     <button class="btn btn-primary" style="margin-top:16px;" data-save-reservation-equip="${b.id}" data-person-index="${personIndex}">💾 Save to this reservation</button>
     <p style="font-size:12px; color:var(--ink-soft); margin-top:10px;">This only updates this reservation. To edit this client's general profile instead, open them from the Clients tab.</p>
-  `);
+  `, () => refreshModal(renderBookingModal(bookingId)));
 }
 async function saveReservationEquip(bookingId, personIndex){
   const b = state.bookings.find(x=>x.id===bookingId);
@@ -2418,14 +2486,14 @@ async function saveReservationEquip(bookingId, personIndex){
   });
   p.weightsUsed = {
     amount: (document.getElementById('rsvWeightsAmount')||{}).value || '',
-    unit: (document.getElementById('rsvWeightsUnit')||{}).value || 'kg',
+    unit: getRadioValue('rsvWeightsUnit', 'kg'),
   };
   p.nitrox = (document.getElementById('rsvNitrox')||{}).checked || false;
   await storeSet(SK.bookings, state.bookings, true);
   await syncBookingPeopleToClientDb(b);
   showToast('Equipment updated for this reservation.');
   renderTab();
-  openBookingDetail(bookingId);
+  modalGoBack();
 }
 function sendBirthdayEmail(email){
   const c = allClientsList().find(x=>x.email===email);
@@ -2788,6 +2856,8 @@ document.addEventListener('click', (e)=>{
   if(t.id === 'loginBtn'){ attemptLogin(); return; }
   if(t.id === 'logoutBtn'){ logout(); return; }
 
+  const openBookingFromClient = t.closest('[data-open-booking-from-client]');
+  if(openBookingFromClient){ openBookingDetailFromClient(openBookingFromClient.dataset.openBookingFromClient, openBookingFromClient.dataset.clientEmail); return; }
   const openBooking = t.closest('[data-open-booking]'); if(openBooking){ openBookingDetail(openBooking.dataset.openBooking); return; }
   const setStatus = t.closest('[data-set-status]'); if(setStatus){ adminSetBookingStatus(setStatus.dataset.setStatus, setStatus.dataset.newStatus); return; }
   const addPayment = t.closest('[data-add-payment]'); if(addPayment){ startAddPayment(addPayment.dataset.addPayment); return; }

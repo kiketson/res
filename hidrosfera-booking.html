@@ -646,7 +646,7 @@ async function setLocale(newLocale){
 }
 async function fetchTranslationsFor(newLocale){
   try{
-    const response = await fetch(`/lang/${newLocale}.json`);
+    const response = await fetch(`/res/lang/${newLocale}.json`);
     if(!response.ok) throw new Error('not found');
     return await response.json();
   } catch(e){
@@ -1785,7 +1785,7 @@ function renderEquipmentSection(person, idx){
       <span tr="Nitrox (+MX$${nitroxRate} per tank)">Nitrox (+MX$${nitroxRate} per tank)</span>
     </label>
   </div>` : ''}
-  <button type="button" class="btn btn-outline" style="margin-top:18px; width:100%;" data-collapse-person="${person.id}" tr="Done">Done</button>`;
+  <div style="text-align:center; margin-top:18px;"><button type="button" class="btn btn-outline btn-sm" data-collapse-person="${person.id}" tr="Done">Done</button></div>`;
 }
 
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -2192,18 +2192,26 @@ function equipmentItemSummary(key, it){
 }
 function equipmentSummaryLine(p){
   const labels = { bcd:'BCD', computer:'Dive computer', fins:'Fins', mask:'Mask', regulator:'Regulator', wetsuit:'Wetsuit' };
-  const parts = visibleEquipItems().map(def=>{
+  const ownItems = [];
+  const rentalItems = [];
+  visibleEquipItems().forEach(def=>{
     const it = p.items[def.key];
-    if(!it || it.mode !== 'rent') return null; // only rental items shown here — own gear isn't listed
-    const sizeText = equipmentItemSummary(def.key, it);
-    return sizeText ? `${labels[def.key]} (${sizeText})` : labels[def.key];
-  }).filter(Boolean);
+    if(!it || !it.mode) return;
+    if(it.mode === 'own') ownItems.push(labels[def.key]);
+    else if(it.mode === 'rent'){
+      const sizeText = equipmentItemSummary(def.key, it);
+      rentalItems.push(sizeText ? `${labels[def.key]} (${sizeText})` : labels[def.key]);
+    }
+  });
   const needsSharedHW = (p.items.bcd.mode==='rent' && p.items.bcd.size==='unknown') || (p.items.wetsuit.mode==='rent' && p.items.wetsuit.size==='unknown');
   if(needsSharedHW && p.heightWeight && (p.heightWeight.height || p.heightWeight.weight)){
-    parts.push(`H/W: ${p.heightWeight.height}${p.heightWeight.heightUnit||''} / ${p.heightWeight.weight}${p.heightWeight.weightUnit||''}`);
+    rentalItems.push(`H/W: ${p.heightWeight.height}${p.heightWeight.heightUnit||''} / ${p.heightWeight.weight}${p.heightWeight.weightUnit||''}`);
   }
-  if(p.nitrox) parts.push('Nitrox');
-  return parts.length ? parts.join(', ') : '—';
+  const lines = [];
+  if(ownItems.length) lines.push(`Own - ${ownItems.join(', ')}`);
+  if(rentalItems.length) lines.push(`Rental - ${rentalItems.join(', ')}`);
+  if(p.nitrox) lines.push('Nitrox');
+  return lines.length ? lines.join('<br>') : '—';
 }
 
 function buildResumeHtml(statusLabel, statusTone, interactive){
