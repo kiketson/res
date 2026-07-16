@@ -850,10 +850,10 @@ function personSummaryLineAdmin(b, p){
   const numRentals = Object.keys(EQUIP_LABELS_ADMIN).filter(k=> p.items && p.items[k] && p.items[k].mode==='rent').length;
   const activitiesCost = acts.reduce((s,act)=> s + (act.unitPrice||0), 0);
   const total = activitiesCost + personEquipmentCost(b, p);
-  if(numExperiences === 0) return `No experiences assigned = ${fmtMoneyLong(total)}`;
+  if(numExperiences === 0) return `No experiences assigned = <strong>${fmtMoneyLong(total)}</strong>`;
   const label = numExperiences === 1 ? activityDisplayName(activityById(acts[0].activityId)) : `${numExperiences} Experiences`;
   const rentalsPart = numRentals > 0 ? ` and ${numRentals} rental${numRentals!==1?'s':''}` : '';
-  return `${label} for ${days} day${days!==1?'s':''}${rentalsPart} = ${fmtMoneyLong(total)}`;
+  return `${label} for ${days} day${days!==1?'s':''}${rentalsPart} = <strong>${fmtMoneyLong(total)}</strong>`;
 }
 function bookingCostBreakdown(b){
   const overrides = b.amountOverrides || {};

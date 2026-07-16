@@ -2052,19 +2052,29 @@ function renderPeopleStep(){
    STEP 4 — REVIEW  (client↔activity assignment + legal-size resume)
    ======================================================================= */
 function ensureAssignmentsDefault(){
+  const validIds = state.people.map(p=>p.id);
+  const committed = {}; // activityId -> personIds, built incrementally as we go so later activities see earlier ones
+  let anyRemoved = false;
   state.bookingActivities.forEach(ba=>{
     const a = activityById(ba.activityId);
-    if(!state.clientAssignments[ba.activityId]){
-      // Default to everyone, EXCEPT anyone who'd conflict with an activity they're already in.
-      state.clientAssignments[ba.activityId] = state.people
-        .filter(p => !personHasConflictingAssignment(p.id, ba, a))
-        .map(p=>p.id);
-    } else {
-      // drop assignments for people who no longer exist
-      const validIds = state.people.map(p=>p.id);
-      state.clientAssignments[ba.activityId] = state.clientAssignments[ba.activityId].filter(id=>validIds.includes(id));
-    }
+    const existing = state.clientAssignments[ba.activityId];
+    let candidates = existing ? existing.filter(id=>validIds.includes(id)) : state.people.map(p=>p.id);
+    const before = candidates.length;
+    candidates = candidates.filter(personId=>{
+      for(const otherActivityId in committed){
+        if(otherActivityId === ba.activityId) continue;
+        if(!committed[otherActivityId].includes(personId)) continue;
+        const otherBa = state.bookingActivities.find(x=>x.activityId===otherActivityId);
+        if(!otherBa || !datesOverlap(ba, otherBa)) continue;
+        if(activitiesTimeConflict(a, activityById(otherActivityId))) return false;
+      }
+      return true;
+    });
+    if(candidates.length < before) anyRemoved = true;
+    committed[ba.activityId] = candidates;
+    state.clientAssignments[ba.activityId] = candidates;
   });
+  if(anyRemoved) showToast('Some travelers were unassigned from an activity because it now overlaps with another one on the same day.');
 }
 function personHasConflictingAssignment(personId, ba, a){
   for(const otherBa of state.bookingActivities){
@@ -2224,10 +2234,10 @@ function personSummaryLine(p){
   const days = totalDaysForPerson(p.id);
   const numRentals = visibleEquipItems().filter(def => p.items[def.key] && p.items[def.key].mode==='rent').length;
   const total = personTotalCost(p);
-  if(numExperiences === 0) return `No experiences assigned yet = ${fmtMoneyLong(total)}`;
+  if(numExperiences === 0) return `No experiences assigned yet = <strong>${fmtMoneyLong(total)}</strong>`;
   const label = numExperiences === 1 ? activityDisplayName(activityById(actIds[0])) : `${numExperiences} Experiences`;
   const rentalsPart = numRentals > 0 ? ` and ${numRentals} rental${numRentals!==1?'s':''}` : '';
-  return `${label} for ${days} day${days!==1?'s':''}${rentalsPart} = ${fmtMoneyLong(total)}`;
+  return `${label} for ${days} day${days!==1?'s':''}${rentalsPart} = <strong>${fmtMoneyLong(total)}</strong>`;
 }
 
 function equipmentItemSummary(key, it){
